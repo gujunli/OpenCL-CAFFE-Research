@@ -9,6 +9,7 @@
 #include "caffe/common.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
+static const clAmdBlasOrder order = clAmdBlasColumnMajor;
 
 namespace caffe {
 
@@ -109,6 +110,50 @@ void caffe_cpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
 }
 
 template <>
+void caffe_gpu_gemvv<float>(const CBLAS_TRANSPOSE TransA, const int M,
+    const int N, const float alpha, const float* A, size_t offA, int lda, 
+    const float* x, size_t offx, const float beta, int incx, 
+    float* y, size_t offy, int incy) {
+    cl_event event=NULL;
+    clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
+    printf("just before sgemv\n");
+    //amdDevice.order = clAmdBlasColumnMajor;
+    cl_int err = clAmdBlasSgemvEx(amdDevice.order, transA,
+                                  M, N, (cl_float)alpha, (cl_mem)A, offA, lda,
+                                  (cl_mem)x, offx, incx, (cl_float)beta, 
+                                  (cl_mem)y, offy, incy,
+                                  1, &(amdDevice.CommandQueue), 0, NULL, &event);
+    printf("just after sgemv\n");
+    if (err != CL_SUCCESS) {
+        printf("clAmdBlasSgemm() failed with %d\n", err);
+     }
+     else {
+        err = clWaitForEvents(1, &event);
+     }
+     clReleaseEvent(event);
+ 
+}
+
+template <>
+void caffe_gpu_gemvv<double>(const CBLAS_TRANSPOSE TransA, const int M,
+    const int N, const double alpha, const double* A, size_t offA, int lda,
+    const double* x, size_t offx, const double beta, int incx,
+    double* y, size_t offy, int incy) {
+    cl_event event=NULL;
+    clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
+    cl_int err = clAmdBlasSgemvEx(amdDevice.order, transA, M, N, (cl_double)alpha, (cl_mem)A, offA, lda, (cl_mem)x, offx, incx, (cl_double)beta, (cl_mem)y, offy, incy, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
+    if (err != CL_SUCCESS) {
+        printf("clAmdBlasSgemm() failed with %d\n", err);
+     }
+     else {
+        err = clWaitForEvents(1, &event);
+     }
+     clReleaseEvent(event);
+
+}
+
+
+template <>
 void caffe_gpu_gemv<float>(const CBLAS_TRANSPOSE TransA, const int M,
     const int N, const float alpha, const float* A, const float* x,
     const float beta, float* y) {
@@ -127,6 +172,14 @@ void caffe_gpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
   CUBLAS_CHECK(cublasDgemv(Caffe::cublas_handle(), cuTransA, N, M, &alpha,
       A, N, x, 1, &beta, y, 1));
 }
+
+/*
+template <>
+void caffe_gpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
+    const int N, const double alpha, const double* A, const double* x,
+    const double beta, double* y) {
+}
+*/
 
 template <>
 void caffe_axpy<float>(const int N, const float alpha, const float* X,

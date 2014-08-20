@@ -52,6 +52,7 @@ inline void SyncedMemory::to_gpu() {
     //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
     //CUDA_CHECK(cudaMemset(gpu_ptr_, 0, size_));
     cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
+    //memset(tmpMem, 0 , size_);
     if(NULL==tmpMem){
       fprintf(stderr,"Failed to create memory object 58\n");
       break;

@@ -93,6 +93,7 @@ cl_int Device::Init(){
     }
 
     order = clAmdBlasRowMajor;
+    //order = clAmdBlasColumnMajor;
    
     return 0;
 }
