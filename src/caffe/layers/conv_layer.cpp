@@ -211,35 +211,11 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         printf("clReadBuffer failed with %d\n", err);
     }
     
-    
-       //CPU computes bottom_diff
       // col2im back to the data
       col2im_cpu(col_diff, channels_, height_, width_, kernel_size_, pad_,
           stride_, bottom_diff + (*bottom)[0]->offset(n));
     }
 
-    /*
-    // gradient w.r.t. weight. Note that we will accumulate diffs.
-    for (int g = 0; g < group_; ++g) {
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
-        (Dtype)1., (Dtype*)sub_diff_,
-        col_data_, (Dtype)1.,
-        weight_diff_);
-    }*/
-    // gradient w.r.t. bottom data, if necessary
-/*    if (propagate_down) {
-      for (int g = 0; g < group_; ++g) {
-        caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_,
-          (Dtype)1., weight_ ,
-          (Dtype*)sub_diff_,
-          (Dtype)0., col_diff_);
-      }
- 
-      clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_diff_, true, 0, col_buffer_.count()*sizeof(Dtype), col_diff, 0, NULL, NULL);
-      // col2im back to the data
-      col2im_cpu(col_diff, channels_, height_, width_, kernel_size_, pad_,
-          stride_, bottom_diff + (*bottom)[0]->offset(n));
-    }*/
   
   }
     clReleaseMemObject(sub_diff_);
