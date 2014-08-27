@@ -150,38 +150,22 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   Dtype* bias_diff = NULL;
   Dtype* bias_diff_ = NULL;
 
-  //cl_mem bias_diff_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, sizeof(Dtype) * this->blobs_[0]->count(), NULL, NULL);
- /* 
   if (bias_term_) {
     bias_diff_ = this->blobs_[1]->mutable_gpu_diff();
     bias_diff = this->blobs_[1]->mutable_cpu_diff();
-  //  memset(bias_diff_, 0, sizeof(Dtype) * this->blobs_[1]->count());
     memset(bias_diff, 0, sizeof(Dtype) * this->blobs_[1]->count());
     clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0 , NULL, NULL );
   
     for (int n = 0; n < num_; ++n) {
-      printf("before sgemv\n"); 
       caffe_gpu_gemvv<Dtype>(CblasNoTrans, M_, N_,
-          (Dtype)1., top_diff_, (size_t)(top[0]->offset(n)*sizeof(Dtype)), M_,
+          (Dtype)1., top_diff_, top[0]->offset(n), N_,
           reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), (size_t)0, (Dtype)1., 1,
           bias_diff_, (size_t)0, 1);
-      printf("after sgemv\n"); 
     }
   }
     
   clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0, NULL, NULL);
-*/
   
-  if (bias_term_) {
-    bias_diff = this->blobs_[1]->mutable_cpu_diff();
-    memset(bias_diff, 0, sizeof(Dtype) * this->blobs_[1]->count());
-    for (int n = 0; n < num_; ++n) {
-      caffe_cpu_gemv<Dtype>(CblasNoTrans, num_output_, N_,
-          1., top_diff + top[0]->offset(n),
-          reinterpret_cast<const Dtype*>(bias_multiplier_->cpu_data()), 1.,
-          bias_diff);
-    }
-  }
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
   int top_offset = M_ * N_;
@@ -195,11 +179,8 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   for (int n = 0; n < num_; ++n) {
     err = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff_, sub_diff_, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, (top[0]->offset(1)*sizeof(Dtype)), 0, NULL, NULL);
     err = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data_, sub_bottom_, (size_t)((*bottom)[0]->offset(n)*sizeof(Dtype)), 0, (*bottom)[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL);
-   //err = clEnqueueCopyBuffer(amdDevice.CommandQueue, top_diff_, sub_diff_, size_t (top[0]->offset(n)*sizeof(Dtype)), 0, size_t(top[0]->offset(0)*sizeof(Dtype)), 0, NULL, NULL);
     // since we saved memory in the forward pass by not storing all col data,
     // we will need to recompute them.
-    //im2col_cpu(bottom_data + (*bottom)[0]->offset(n), channels_, height_,
-    //                  width_, kernel_size_, pad_, stride_, col_data);
     im2col_gpu_ocl(sub_bottom_, channels_, height_,
                       width_, kernel_size_, pad_, stride_, col_data_);
     err = clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_data_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_data, 0, NULL, NULL);
