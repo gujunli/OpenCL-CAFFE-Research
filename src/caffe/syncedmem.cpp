@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include "caffe/common.hpp"
 #include "caffe/syncedmem.hpp"
+#include "caffe/util/ocl_util.hpp"
+
 
 namespace caffe {
 
@@ -32,11 +34,7 @@ inline void SyncedMemory::to_cpu() {
       CaffeMallocHost(&cpu_ptr_, size_);
       own_cpu_data_ = true;
     }
-    //CUDA_CHECK(cudaMemcpy(cpu_ptr_, gpu_ptr_, size_, cudaMemcpyDeviceToHost));
-    cl_int iStatus = clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL);
-    if(CL_SUCCESS!=iStatus){
-        fprintf(stderr, "Failed to EnqueueReadBuffer");
-    }
+    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
     break;
   }
@@ -50,13 +48,12 @@ inline void SyncedMemory::to_gpu() {
   switch (head_) {
   case UNINITIALIZED:{
     //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
-    //CUDA_CHECK(cudaMemset(gpu_ptr_, 0, size_));
     cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
-    //memset(tmpMem, 0 , size_);
     if(NULL==tmpMem){
       fprintf(stderr,"Failed to create memory object 58\n");
       break;
     }
+    ocl_memset(tmpMem, (int)0, (int)(size_/sizeof(int)));
     gpu_ptr_ = (void*)tmpMem; 
     head_ = HEAD_AT_GPU;
     break;
@@ -70,11 +67,7 @@ inline void SyncedMemory::to_gpu() {
       }
       gpu_ptr_ = (void*)tmpMem;
     }
-    //CUDA_CHECK(cudaMemcpy(gpu_ptr_, cpu_ptr_, size_, cudaMemcpyHostToDevice));
-    cl_int iStatus = clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL);
-    if(CL_SUCCESS!=iStatus){
-        fprintf(stderr, "Failed to EnqueueWriteBuffer");
-    }
+    OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
     break;
   }

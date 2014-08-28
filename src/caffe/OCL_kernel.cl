@@ -104,5 +104,11 @@ __kernel void OCL_memset(__global T* buffer, const T value, const int size){
 template __attribute__((mangled_name(oclmemfloat))) __kernel void OCL_memset(__global float* buffer, const float value, const int size);
 template __attribute__((mangled_name(oclmemdouble))) __kernel void OCL_memset(__global double* buffer, const double value, const int size);
 
+__kernel void OCL_memset2(__global int* buffer, const int value, const int size){
+        int gdx = get_global_id(0);
+        if(gdx < size){
+                buffer[gdx] = value;    
+        }
+}
 
 
