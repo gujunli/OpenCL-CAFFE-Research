@@ -7,6 +7,7 @@
 #include "caffe/util/im2col.hpp"
 #include "caffe/filler.hpp"
 #include "caffe/util/math_functions.hpp"
+#include "caffe/util/ocl_util.hpp"
 
 namespace caffe {
 
@@ -91,19 +92,18 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   cl_mem subTopMem=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top_offset*sizeof(Dtype)), NULL, NULL);
   cl_mem subWgtMem=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(weight_offset*sizeof(Dtype)), NULL, NULL);
   cl_mem subBotMem=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(bottom[0]->offset(1))*sizeof(Dtype), NULL, NULL);
-  cl_mem subColMem=clCreateBuffer(amdDevice.Context,CL_MEM_READ_WRITE, (size_t)(col_offset)*sizeof(Dtype), NULL, NULL);
+  cl_mem subColMem=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(col_offset)*sizeof(Dtype), NULL, NULL);
   for (int n = 0; n < num_; ++n) {
     // First, im2col
-    cl_int iStatus;
-    iStatus = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)subBotMem, (size_t)(bottom[0]->offset(n)*sizeof(Dtype)), 0, bottom[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL);
+    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)subBotMem, (size_t)(bottom[0]->offset(n)*sizeof(Dtype)), 0, bottom[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
     
     im2col_gpu_ocl((cl_mem)subBotMem, channels_, height_, 
                        width_, kernel_size_, pad_, stride_, col_data);
     //note if(group!=1) it doesn't work
     for (int g = 0; g < group_; ++g) {
-      iStatus = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)subColMem, (size_t)(col_offset * g * sizeof(Dtype)), 0, col_offset *sizeof(Dtype), 0, NULL, NULL);
+      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)subColMem, (size_t)(col_offset * g * sizeof(Dtype)), 0, col_offset *sizeof(Dtype), 0, NULL, NULL));
 
-      iStatus = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)weight, (cl_mem)subWgtMem, (size_t)(weight_offset * g * sizeof(Dtype)), 0, weight_offset * sizeof(Dtype), 0, NULL, NULL);
+      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)weight, (cl_mem)subWgtMem, (size_t)(weight_offset * g * sizeof(Dtype)), 0, weight_offset * sizeof(Dtype), 0, NULL, NULL));
 
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
         (Dtype)1., (Dtype*)subWgtMem, (Dtype*)subColMem,
@@ -118,7 +118,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
           (Dtype)1., (Dtype*)subTopMem);
     }
     
-    iStatus = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)subTopMem, (cl_mem)top_data, 0, (size_t)((*top)[0]->offset(n) * sizeof(Dtype)), ((*top)[0]->count()/num_)*sizeof(Dtype), 0, NULL, NULL);
+    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)subTopMem, (cl_mem)top_data, 0, (size_t)((*top)[0]->offset(n) * sizeof(Dtype)), ((*top)[0]->count()/num_)*sizeof(Dtype), 0, NULL, NULL));
   }
   clReleaseMemObject(subTopMem);
   clReleaseMemObject(subWgtMem);
@@ -153,9 +153,9 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   if (bias_term_) {
     bias_diff_ = this->blobs_[1]->mutable_gpu_diff();
     bias_diff = this->blobs_[1]->mutable_cpu_diff();
-    memset(bias_diff, 0, sizeof(Dtype) * this->blobs_[1]->count());
-    clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0 , NULL, NULL );
-  
+    //memset(bias_diff, 0, sizeof(Dtype) * this->blobs_[1]->count());
+    //clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0 , NULL, NULL );
+    ocl_memset(bias_diff_, (Dtype)(0.), this->blobs_[1]->count());
     for (int n = 0; n < num_; ++n) {
       caffe_gpu_gemvv<Dtype>(CblasNoTrans, M_, N_,
           (Dtype)1., top_diff_, top[0]->offset(n), N_,
@@ -164,26 +164,25 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     }
   }
     
-  clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0, NULL, NULL);
+  OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0, NULL, NULL));
   
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
   int top_offset = M_ * N_;
   memset(weight_diff, 0, sizeof(Dtype) * this->blobs_[0]->count());
-  
   clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[0]->count(), weight_diff, 0 , NULL, NULL );
   cl_int err;
   cl_mem sub_diff_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
   cl_mem sub_bottom_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((*bottom)[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
   
   for (int n = 0; n < num_; ++n) {
-    err = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff_, sub_diff_, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, (top[0]->offset(1)*sizeof(Dtype)), 0, NULL, NULL);
-    err = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data_, sub_bottom_, (size_t)((*bottom)[0]->offset(n)*sizeof(Dtype)), 0, (*bottom)[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL);
+    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff_, sub_diff_, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, (top[0]->offset(1)*sizeof(Dtype)), 0, NULL, NULL));
+    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data_, sub_bottom_, (size_t)((*bottom)[0]->offset(n)*sizeof(Dtype)), 0, (*bottom)[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
     // since we saved memory in the forward pass by not storing all col data,
     // we will need to recompute them.
     im2col_gpu_ocl(sub_bottom_, channels_, height_,
                       width_, kernel_size_, pad_, stride_, col_data_);
-    err = clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_data_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_data, 0, NULL, NULL);
+    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_data_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_data, 0, NULL, NULL));
    
     // gradient w.r.t. weight. Note that we will accumulate diffs.
      
@@ -194,10 +193,7 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         (Dtype*)weight_diff_);
     }
 
-    err = clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, this->blobs_[0]->count()*sizeof(Dtype), weight_diff, 0, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        printf("clReadBuffer failed with %d\n", err);
-    }
+    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, this->blobs_[0]->count()*sizeof(Dtype), weight_diff, 0, NULL, NULL));
    
    if (propagate_down) {
       for (int g = 0; g < group_; ++g) {
@@ -206,10 +202,7 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
           (Dtype*)sub_diff_,
           (Dtype)0., col_diff_);
       }
-    err = clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_diff_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_diff, 0, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        printf("clReadBuffer failed with %d\n", err);
-    }
+    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_diff_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_diff, 0, NULL, NULL));
     
       // col2im back to the data
       col2im_cpu(col_diff, channels_, height_, width_, kernel_size_, pad_,

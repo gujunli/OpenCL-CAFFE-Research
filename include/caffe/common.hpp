@@ -26,6 +26,19 @@ private:\
 // is executed we will see a fatal log.
 #define NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented Yet"
 
+
+// OpenCL: various checks for different function calls.
+
+#define OCL_CHECK(condition) \
+  do { \
+    cl_int error = condition; \
+    CHECK_EQ(error, CL_SUCCESS) << " " << error; \
+    if(CL_SUCCESS != error){ \
+        fprintf(stderr, "Failed to %d", condition); \
+    } \
+  } while (0)
+
+//#define OCL_memset();
 // CUDA: various checks for different function calls.
 #define CUDA_CHECK(condition) \
   /* Code block avoids redefinition of cudaError_t error */ \

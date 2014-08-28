@@ -1,3 +1,5 @@
+
+
 template <class T>
 __kernel void im2col(const int n,__global T* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_col){
     int index=get_global_id(0);
@@ -91,6 +93,16 @@ template __attribute__((mangled_name(AvePoolForwardfloat))) __kernel void AvePoo
 template __attribute__((mangled_name(AvePoolForwarddouble))) __kernel void AvePoolForward(const int nthreads, __global double* bottom_data, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width,  const int kernel_size, const int stride, const int pad, __global double* top_data);
 
 
+template <class T>
+__kernel void OCL_memset(__global T* buffer, const T value, const int size){
+	int gdx = get_global_id(0);
+	if(gdx < size){
+		buffer[gdx] = value;	
+	}
+}
+
+template __attribute__((mangled_name(oclmemfloat))) __kernel void OCL_memset(__global float* buffer, const float value, const int size);
+template __attribute__((mangled_name(oclmemdouble))) __kernel void OCL_memset(__global double* buffer, const double value, const int size);
 
 
 
