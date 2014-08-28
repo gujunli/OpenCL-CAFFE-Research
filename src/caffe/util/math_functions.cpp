@@ -50,9 +50,9 @@ void caffe_gpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
 
     int lda = (TransA == CblasNoTrans) ? K : M;
     int ldb = (TransB == CblasNoTrans) ? N : K;
-    int ldc = ldb;
+    int ldc = N;
     cl_event event=NULL;
-    cl_int err = clAmdBlasSgemm(amdDevice.order, transA, transB, M, N, K, (cl_float)alpha, (cl_mem)A, lda, (cl_mem)B, ldb, (cl_float)beta, (cl_mem)C, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
+    cl_int err = clAmdBlasSgemm(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, ldb, (cl_mem)A, lda, (cl_float)beta, (cl_mem)C, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
     if (err != CL_SUCCESS) {
         printf("clAmdBlasSgemm() failed with %d\n", err);
     }
@@ -116,16 +116,16 @@ void caffe_gpu_gemvv<float>(const CBLAS_TRANSPOSE TransA, const int M,
     float* y, size_t offy, int incy) {
     cl_event event=NULL;
     clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
-    printf("just before sgemv\n");
+    //printf("just before sgemv\n");
     //amdDevice.order = clAmdBlasColumnMajor;
-    cl_int err = clAmdBlasSgemvEx(amdDevice.order, transA,
+    cl_int err = clAmdBlasSgemvEx(amdDevice.row, transA,
                                   M, N, (cl_float)alpha, (cl_mem)A, offA, lda,
                                   (cl_mem)x, offx, incx, (cl_float)beta, 
                                   (cl_mem)y, offy, incy,
                                   1, &(amdDevice.CommandQueue), 0, NULL, &event);
-    printf("just after sgemv\n");
+    //printf("just after sgemv\n");
     if (err != CL_SUCCESS) {
-        printf("clAmdBlasSgemm() failed with %d\n", err);
+        printf("clAmdBlasSgemvEx() failed with %d\n", err);
      }
      else {
         err = clWaitForEvents(1, &event);
@@ -141,9 +141,9 @@ void caffe_gpu_gemvv<double>(const CBLAS_TRANSPOSE TransA, const int M,
     double* y, size_t offy, int incy) {
     cl_event event=NULL;
     clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
-    cl_int err = clAmdBlasSgemvEx(amdDevice.order, transA, M, N, (cl_double)alpha, (cl_mem)A, offA, lda, (cl_mem)x, offx, incx, (cl_double)beta, (cl_mem)y, offy, incy, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
+    cl_int err = clAmdBlasSgemvEx(amdDevice.row, transA, M, N, (cl_double)alpha, (cl_mem)A, offA, lda, (cl_mem)x, offx, incx, (cl_double)beta, (cl_mem)y, offy, incy, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
     if (err != CL_SUCCESS) {
-        printf("clAmdBlasSgemm() failed with %d\n", err);
+        printf("clAmdBlasSgemvEx) failed with %d\n", err);
      }
      else {
         err = clWaitForEvents(1, &event);

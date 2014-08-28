@@ -128,7 +128,6 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 
 
   case PoolingParameter_PoolMethod_AVE:{
-    std::cout<<"AVE"<<std::endl;
     cl_int _err=0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"AvePoolForwardfloat",&_err);
     if(NULL==Kernel){
