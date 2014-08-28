@@ -92,8 +92,8 @@ cl_int Device::Init(){
         printf("clAmdBlasSetup() failed with %d\n", err);
     }
 
-    order = clAmdBlasRowMajor;
-    //order = clAmdBlasColumnMajor;
+    row = clAmdBlasRowMajor;
+    col = clAmdBlasColumnMajor;
    
     return 0;
 }

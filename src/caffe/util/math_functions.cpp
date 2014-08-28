@@ -50,9 +50,9 @@ void caffe_gpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
 
     int lda = (TransA == CblasNoTrans) ? K : M;
     int ldb = (TransB == CblasNoTrans) ? N : K;
-    int ldc = ldb;
+    int ldc = N;
     cl_event event=NULL;
-    cl_int err = clAmdBlasSgemm(amdDevice.order, transA, transB, M, N, K, (cl_float)alpha, (cl_mem)A, lda, (cl_mem)B, ldb, (cl_float)beta, (cl_mem)C, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
+    cl_int err = clAmdBlasSgemm(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, ldb, (cl_mem)A, lda, (cl_float)beta, (cl_mem)C, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
     if (err != CL_SUCCESS) {
         printf("clAmdBlasSgemm() failed with %d\n", err);
     }
@@ -61,23 +61,6 @@ void caffe_gpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
     }
     clReleaseEvent(event);
 }
-
-/*
-template <>
-void caffe_gpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
-    const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
-    const float alpha, const float* A, const float* B, const float beta,
-    float* C) {
-  // Note that cublas follows fortran order.
-  int lda = (TransA == CblasNoTrans) ? K : M;
-  int ldb = (TransB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (TransA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (TransB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  CUBLAS_CHECK(cublasSgemm(Caffe::cublas_handle(), cuTransB, cuTransA,
-      N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
-}*/
 
 template <>
 void caffe_gpu_gemm<double>(const CBLAS_TRANSPOSE TransA,
@@ -116,16 +99,16 @@ void caffe_gpu_gemvv<float>(const CBLAS_TRANSPOSE TransA, const int M,
     float* y, size_t offy, int incy) {
     cl_event event=NULL;
     clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
-    printf("just before sgemv\n");
+    //printf("just before sgemv\n");
     //amdDevice.order = clAmdBlasColumnMajor;
-    cl_int err = clAmdBlasSgemvEx(amdDevice.order, transA,
+    cl_int err = clAmdBlasSgemvEx(amdDevice.row, transA,
                                   M, N, (cl_float)alpha, (cl_mem)A, offA, lda,
                                   (cl_mem)x, offx, incx, (cl_float)beta, 
                                   (cl_mem)y, offy, incy,
                                   1, &(amdDevice.CommandQueue), 0, NULL, &event);
-    printf("just after sgemv\n");
+    //printf("just after sgemv\n");
     if (err != CL_SUCCESS) {
-        printf("clAmdBlasSgemm() failed with %d\n", err);
+        printf("clAmdBlasSgemvEx() failed with %d\n", err);
      }
      else {
         err = clWaitForEvents(1, &event);
@@ -141,9 +124,9 @@ void caffe_gpu_gemvv<double>(const CBLAS_TRANSPOSE TransA, const int M,
     double* y, size_t offy, int incy) {
     cl_event event=NULL;
     clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
-    cl_int err = clAmdBlasSgemvEx(amdDevice.order, transA, M, N, (cl_double)alpha, (cl_mem)A, offA, lda, (cl_mem)x, offx, incx, (cl_double)beta, (cl_mem)y, offy, incy, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
+    cl_int err = clAmdBlasSgemvEx(amdDevice.row, transA, M, N, (cl_double)alpha, (cl_mem)A, offA, lda, (cl_mem)x, offx, incx, (cl_double)beta, (cl_mem)y, offy, incy, 1, &(amdDevice.CommandQueue), 0, NULL, &event);
     if (err != CL_SUCCESS) {
-        printf("clAmdBlasSgemm() failed with %d\n", err);
+        printf("clAmdBlasSgemvEx) failed with %d\n", err);
      }
      else {
         err = clWaitForEvents(1, &event);
@@ -172,14 +155,6 @@ void caffe_gpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
   CUBLAS_CHECK(cublasDgemv(Caffe::cublas_handle(), cuTransA, N, M, &alpha,
       A, N, x, 1, &beta, y, 1));
 }
-
-/*
-template <>
-void caffe_gpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
-    const int N, const double alpha, const double* A, const double* x,
-    const double beta, double* y) {
-}
-*/
 
 template <>
 void caffe_axpy<float>(const int N, const float alpha, const float* X,

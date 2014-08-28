@@ -82,7 +82,7 @@ void im2col_gpu_ocl(cl_mem data_im, const int channels,
     const int stride, Dtype* data_col) {
     
     cl_int _err=0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"im2colfloat",&_err);
+    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"im2colfloat", &_err);
     if(NULL==Kernel){
         fprintf(stderr,"Failed to create kernel %d\n",_err);
     }

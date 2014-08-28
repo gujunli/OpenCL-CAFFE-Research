@@ -15,7 +15,8 @@ public:
     cl_context Context;
     cl_command_queue CommandQueue;
     cl_program Program; 
-    clAmdBlasOrder order;
+    clAmdBlasOrder col;
+    clAmdBlasOrder row;
 
      
     cl_int Init(); 
