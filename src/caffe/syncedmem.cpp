@@ -48,6 +48,7 @@ inline void SyncedMemory::to_gpu() {
   switch (head_) {
   case UNINITIALIZED:{
     //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
+    //To Do: implement OCL_CHECK_NULL
     cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
     if(NULL==tmpMem){
       fprintf(stderr,"Failed to create memory object 58\n");
