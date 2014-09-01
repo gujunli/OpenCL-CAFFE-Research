@@ -1,4 +1,20 @@
+template <class T>
+__kernel void OCL_memset(__global T* buffer, const T value, const int size){
+	int gdx = get_global_id(0);
+	if(gdx < size){
+		buffer[gdx] = value;	
+	}
+}
 
+template __attribute__((mangled_name(oclmemfloat))) __kernel void OCL_memset(__global float* buffer, const float value, const int size);
+template __attribute__((mangled_name(oclmemdouble))) __kernel void OCL_memset(__global double* buffer, const double value, const int size);
+
+__kernel void OCL_memset2(__global int* buffer, const int value, const int size){
+        int gdx = get_global_id(0);
+        if(gdx < size){
+                buffer[gdx] = value;    
+        }
+}
 
 template <class T>
 __kernel void im2col(const int n,__global T* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_col){
@@ -92,23 +108,77 @@ __kernel void AvePoolForward(const int nthreads, __global T* bottom_data, const 
 template __attribute__((mangled_name(AvePoolForwardfloat))) __kernel void AvePoolForward(const int nthreads, __global float* bottom_data, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, const int pad, __global float* top_data);
 template __attribute__((mangled_name(AvePoolForwarddouble))) __kernel void AvePoolForward(const int nthreads, __global double* bottom_data, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width,  const int kernel_size, const int stride, const int pad, __global double* top_data);
 
+template <class T>
+__kernel void MaxPoolBackward(const int nthreads, __global T* bottom_data, __global T* top_data, __global T* top_diff,
+const int num, const int channels, const int height,
+const int width, const int pooled_height, const int pooled_width,
+const int kernel_size, const int stride, __global T* bottom_diff){
+    int index = get_global_id(0);
+    int total = get_global_size(0);
+    for(index; index < nthreads; index += total){
+        // find out the local index
+        // find out the local offset
+        int w = index % width;
+        int h = (index / width) % height;
+        int c = (index / width / height) % channels;
+        int n = index / width / height / channels;
+        int phstart = (h < kernel_size) ? 0 : (h - kernel_size) / stride + 1;
+        int phend = min(h / stride + 1, pooled_height);
+        int pwstart = (w < kernel_size) ? 0 : (w - kernel_size) / stride + 1;
+        int pwend = min(w / stride + 1, pooled_width);
+        T gradient = 0;
+        T bottom_datum =
+            bottom_data[((n * channels + c) * height + h) * width + w];
+        top_data += (n * channels + c) * pooled_height * pooled_width;
+        top_diff += (n * channels + c) * pooled_height * pooled_width;
+        for (int ph = phstart; ph < phend; ++ph) {
+            for (int pw = pwstart; pw < pwend; ++pw) {
+                gradient += top_diff[ph * pooled_width + pw] *
+                    (bottom_datum == top_data[ph * pooled_width + pw]);
+            }
+        }
+        bottom_diff[index] = gradient;
+
+    }
+
+}
+template __attribute__((mangled_name(MaxPoolBackwardfloat))) __kernel void MaxPoolBackward(const int nthreads, __global float* bottom_data, __global float* top_data, __global float* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, __global float* bottom_diff);
+template __attribute__((mangled_name(MaxPoolBackwarddouble))) __kernel void MaxPoolBackward(const int nthreads, __global double* bottom_data, __global double* top_data, __global double* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, __global double* bottom_diff);
+
 
 template <class T>
-__kernel void OCL_memset(__global T* buffer, const T value, const int size){
-	int gdx = get_global_id(0);
-	if(gdx < size){
-		buffer[gdx] = value;	
-	}
+__kernel void AvePoolBackward(const int nthreads, __global T* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, const int pad, __global T* bottom_diff){
+     int index = get_global_id(0);
+     int total = get_global_size(0);
+     for(index; index < nthreads; index += total){
+	    int w = index % width + pad;
+	    int h = (index / width) % height + pad;
+	    int c = (index / width / height) % channels;
+	    int n = index / width / height / channels;
+	    int phstart = (h < kernel_size) ? 0 : (h - kernel_size) / stride + 1;
+	    int phend = min(h / stride + 1, pooled_height);
+	    int pwstart = (w < kernel_size) ? 0 : (w - kernel_size) / stride + 1;
+	    int pwend = min(w / stride + 1, pooled_width);
+	    T gradient = 0;
+	    top_diff += (n * channels + c) * pooled_height * pooled_width;
+	    for (int ph = phstart; ph < phend; ++ph) {
+	      for (int pw = pwstart; pw < pwend; ++pw) {
+		// figure out the pooling size
+		int hstart = ph * stride - pad;
+		int wstart = pw * stride - pad;
+		int hend = min(hstart + kernel_size, height + pad);
+		int wend = min(wstart + kernel_size, width + pad);
+		int pool_size = (hend - hstart) * (wend - wstart);
+           gradient += top_diff[ph * pooled_width + pw] / pool_size;
+      }
+    }
+    bottom_diff[index] = gradient;
+
+   }
 }
 
-template __attribute__((mangled_name(oclmemfloat))) __kernel void OCL_memset(__global float* buffer, const float value, const int size);
-template __attribute__((mangled_name(oclmemdouble))) __kernel void OCL_memset(__global double* buffer, const double value, const int size);
+template __attribute__((mangled_name(AvePoolBackwardfloat))) __kernel void AvePoolBackward(const int nthreads, __global float* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, const int pad, __global float* bottom_diff);
+template __attribute__((mangled_name(AvePoolBackwarddouble))) __kernel void AvePoolBackward(const int nthreads, __global double* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width,  const int kernel_size, const int stride, const int pad, __global double* bottom_diff);
 
-__kernel void OCL_memset2(__global int* buffer, const int value, const int size){
-        int gdx = get_global_id(0);
-        if(gdx < size){
-                buffer[gdx] = value;    
-        }
-}
 
 
