@@ -41,7 +41,7 @@ template void ocl_memset<double>(const double* buffer, const double value, const
 
 void ocl_memset(const cl_mem buffer, const int value, const int count){
     cl_int err=0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program, "oclmemfloat", &err);
+    cl_kernel Kernel = clCreateKernel(amdDevice.Program, "OCL_memset2", &err);
     if(NULL==Kernel){
         fprintf(stderr, "Failed to create kernel %d\n", err);
     }
@@ -54,7 +54,7 @@ void ocl_memset(const cl_mem buffer, const int value, const int count){
     cl_event event;
     size_t Global_Work_Size[1] = {count};
     size_t Local_Work_Size[1] = {256};
-    cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event));
     OCL_CHECK(clWaitForEvents(1, &event));
 
     clReleaseKernel(Kernel);

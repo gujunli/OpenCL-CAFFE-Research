@@ -180,5 +180,24 @@ __kernel void AvePoolBackward(const int nthreads, __global T* top_diff, const in
 template __attribute__((mangled_name(AvePoolBackwardfloat))) __kernel void AvePoolBackward(const int nthreads, __global float* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, const int pad, __global float* bottom_diff);
 template __attribute__((mangled_name(AvePoolBackwarddouble))) __kernel void AvePoolBackward(const int nthreads, __global double* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width,  const int kernel_size, const int stride, const int pad, __global double* bottom_diff);
 
+template <class T>
+__kernel void ReLUForward(const int count, __global T* in, __global T* out){
+	int index = get_global_id(0);
+	int total = get_global_size(0);
+	for(index; index < count; index += total)
+		out[index] = in[index] > 0? in[index]:0;
+}
 
+template __attribute__ ((mangled_name(ReLUForwardfloat))) __kernel void ReLUForward(const int count, __global float* in, __global float* out);
+template __attribute__ ((mangled_name(ReLUForwarddouble))) __kernel void ReLUForward(const int count, __global double* in, __global double* out);
 
+template <class T>
+__kernel void ReLUBackward(const int count, __global T* in_diff, __global T* in_data,__global T* out_diff){
+	int index = get_global_id(0);
+	int total = get_global_size(0);
+	for(index; index < count; index += total)
+		out_diff[index] = in_diff[index] *(in_data[index] > 0);
+}
+
+template __attribute__ ((mangled_name(ReLUBackwardfloat))) __kernel void ReLUBackward(const int count, __global float* in_diff, __global float* in_data, __global float* out_diff);
+template __attribute__ ((mangled_name(ReLUBackwarddouble))) __kernel void ReLUBackward(const int count, __global double* in_diff, __global double* in_data, __global double* out_diff);
