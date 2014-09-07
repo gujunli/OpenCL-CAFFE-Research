@@ -52,8 +52,8 @@ void ocl_memset(const cl_mem buffer, const int value, const int count){
     OCL_CHECK(err);
 
     cl_event event;
-    size_t Global_Work_Size[1] = {count};
-    size_t Local_Work_Size[1] = {256};
+    size_t Global_Work_Size[] = {count};
+    size_t Local_Work_Size[] = {256};
     OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event));
     OCL_CHECK(clWaitForEvents(1, &event));
 

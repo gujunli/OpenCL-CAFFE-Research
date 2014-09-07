@@ -55,6 +55,7 @@ inline void SyncedMemory::to_gpu() {
       break;
     }
     ocl_memset(tmpMem, (int)0, (int)(size_/sizeof(int)));
+
     gpu_ptr_ = (void*)tmpMem; 
     head_ = HEAD_AT_GPU;
     break;
