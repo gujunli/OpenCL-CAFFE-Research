@@ -208,7 +208,6 @@ __kernel void get_max(const int num, const int dim, __global T* data, __global T
      int total = get_global_size(0);
      for(index; index < num; index +=  total){
 	T maxval = -FLT_MAX;
-	//T maxval = 0;
         for (int i = 0; i <  dim; i++)
 	maxval = max( data[index*dim + i], maxval );
         out[index] = maxval;
@@ -243,4 +242,31 @@ __kernel void softmax_div (const int num, const int dim, __global T* scale, __gl
 template __attribute__ ((mangled_name(softmax_div_float))) __kernel void softmax_div (const int num, const int dim, __global float* scale, __global float* data);
 template __attribute__ ((mangled_name(softmax_div_double))) __kernel void softmax_div (const int num, const int dim, __global double* scale, __global double* data);
 
+
+
+template <class T>
+__kernel void diff (const int num, const int dim, __global T* data, __global T* label){
+        int index = get_global_id(0);
+        int total = get_global_size(0);
+        int offset;
+	for(index; index < num; index +=  total){
+  	offset = (int) label[index];
+        data[index * dim + offset] -= 1;
+        }
+}
+
+template __attribute__ ((mangled_name(diff_float))) __kernel void diff (const int num, const int dim, __global float* data, __global float* label);
+template __attribute__ ((mangled_name(diff_double))) __kernel void diff (const int num, const int dim, __global double* data, __global double* label);
+
+template <class T>
+__kernel void scal (const int num, const T alpha, __global T* data){
+        int index = get_global_id(0);
+        int total = get_global_size(0);
+        for(index; index < num; index +=  total){
+        data[index] = data[index] * alpha;
+        }
+}
+
+template __attribute__ ((mangled_name(scal_float))) __kernel void scal (const int num, const float alpha,  __global float* data);
+template __attribute__ ((mangled_name(scal_double))) __kernel void scal (const int num, const double alpha,  __global double* data);
 

@@ -108,5 +108,69 @@ void softmax_div_gpu( const int num, const int dim, const Dtype* scale, Dtype* d
 template void softmax_div_gpu<float>(const int num, const int dim, const float* scale, float* data);
 template void softmax_div_gpu<double>(const int num, const int dim, const double* scale, double* data);
 
+template <typename Dtype>
+void scal_gpu( const int num, const Dtype alpha, Dtype* data){
+    cl_int err=0;
+    cl_kernel Kernel;
+    //if (Dtype == 'float')
+        Kernel = clCreateKernel(amdDevice.Program, "scal_float", &err);
+    //if (Dtype == 'double')
+      //  Kernel = clCreateKernel(amdDevice.Program, "softmax_div_doulbe", &err);
+    if(NULL==Kernel){
+        fprintf(stderr, "Failed to create kernel %d\n", err);
+    }
+
+    OCL_CHECK( clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&num) );
+    OCL_CHECK( clSetKernelArg(Kernel, 1, sizeof(Dtype), (void*)&alpha) );
+    OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&data) );
+
+    cl_event event;
+    size_t Global_Work_Size[1] = {num};
+    size_t Local_Work_Size[1] = {256};
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
+    OCL_CHECK( clWaitForEvents(1, &event));
+
+    clReleaseKernel(Kernel);
+    clReleaseEvent(event);
+
+}
+
+// Explicit instantiation
+template void scal_gpu<float>(const int num, const float alpha, float* data);
+template void scal_gpu<double>(const int num, const double alpha, double* data);
+
+template <typename Dtype>
+void diff_gpu( const int num, int dim, Dtype* data, const Dtype* label){
+    cl_int err=0;
+    cl_kernel Kernel;
+    //if (Dtype == 'float')
+        Kernel = clCreateKernel(amdDevice.Program, "diff_float", &err);
+    //if (Dtype == 'double')
+      //  Kernel = clCreateKernel(amdDevice.Program, "softmax_div_doulbe", &err);
+    if(NULL==Kernel){
+        fprintf(stderr, "Failed to create kernel %d\n", err);
+    }
+
+    OCL_CHECK( clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&num) );
+    OCL_CHECK( clSetKernelArg(Kernel, 1, sizeof(cl_int), (void*)&dim) );
+    OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&data) );
+    OCL_CHECK( clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&label) );
+
+    cl_event event;
+    size_t Global_Work_Size[1] = {num};
+    size_t Local_Work_Size[1] = {256};
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
+    OCL_CHECK( clWaitForEvents(1, &event));
+
+    clReleaseKernel(Kernel);
+    clReleaseEvent(event);
+
+}
+
+// Explicit instantiation
+template void diff_gpu<float>(const int num, const int dim, float* data, const float* label);
+template void diff_gpu<double>(const int num, const int dim, double* data, const double* label);
+
+
 
 }  // namespace caffe
