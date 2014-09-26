@@ -77,6 +77,7 @@ cl_int Device::Init(){
     
     //Build Program
     cl_int iStatus=clBuildProgram(Program,1,pDevices,buildOption,NULL,NULL);
+    LOG(INFO)<<"Build Program";
     if(CL_SUCCESS!=iStatus){
         fprintf(stderr,"Err: Failed to build program\n");
         char szBuildLog[16384];

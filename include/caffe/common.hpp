@@ -34,9 +34,18 @@ private:\
     cl_int error = condition; \
     CHECK_EQ(error, CL_SUCCESS) << " " << error; \
     if(CL_SUCCESS != error){ \
-        fprintf(stderr, "Failed to %d", condition); \
+       LOG(INFO) << "failed to enqueue kernel RELuForwardFloat ";\
     } \
   } while (0)
+
+#define AMDBLAS_CHECK(flag) \
+  do { \
+     cl_int error = flag; \
+     CHECK_EQ(flag, clAmdBlasSuccess) << " " << error; \
+     if (flag != clAmdBlasSuccess){ \
+         LOG(INFO) << "AmdBlas Function Failed! Error Code:" << flag; \
+     } \
+ } while(0)
 
 //#define OCL_memset();
 // CUDA: various checks for different function calls.
