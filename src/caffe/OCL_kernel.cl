@@ -52,6 +52,36 @@ __kernel void im2col(const int n,__global T* data_im, const int height, const in
 template __attribute__((mangled_name(im2colfloat))) __kernel void im2col(const int n,__global float* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_col); 
 template __attribute__((mangled_name(im2coldouble))) __kernel void im2col(const int n,__global double* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_col); 
 
+template <class T>
+__kernel void col2im(const int n,__global T* data_col, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_im){
+    int index = get_global_id(0);
+    int tmp = get_global_size(0);
+    for(index; index < n; index += tmp){
+      T val = 0;
+      int w = index % width + pad;
+      int h = (index / width) % height + pad;
+      int c = index / (width * height);
+      // compute the start and end of the output
+      int w_col_start = (w < ksize) ? 0 : (w - ksize) / stride + 1;
+      int w_col_end = min(w / stride + 1, width_col);
+      int h_col_start = (h < ksize) ? 0 : (h - ksize) / stride + 1;
+      int h_col_end = min(h / stride + 1, height_col);
+      // equivalent implementation
+      int offset = (c * ksize * ksize + h * ksize + w) * height_col * width_col;
+      int coeff_h_col = (1 - stride * ksize * height_col) * width_col;
+      int coeff_w_col = (1 - stride * height_col * width_col);
+      for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
+        for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
+          val += data_col[offset + h_col * coeff_h_col + w_col * coeff_w_col];
+        }
+      }
+      data_im[index] = val;
+  }
+}
+template __attribute__((mangled_name(col2imfloat))) __kernel void col2im(const int n,__global float* data_col, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_im); 
+template __attribute__((mangled_name(col2imdouble))) __kernel void col2im(const int n,__global double* data_col, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_im); 
+
+
 
 template <class T>
 __kernel void MaxPoolForward(const int nthreads, __global T* bottom_data, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, __global T* top_data){
