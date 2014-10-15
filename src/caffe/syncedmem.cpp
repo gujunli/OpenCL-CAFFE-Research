@@ -36,6 +36,7 @@ inline void SyncedMemory::to_cpu() {
     }
     OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
+    LOG(INFO) << "copy data from GPU to CPU";
     break;
   }
   case HEAD_AT_CPU:
@@ -71,6 +72,7 @@ inline void SyncedMemory::to_gpu() {
     }
     OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
+    LOG(INFO) << "copy data from CPU to GPU";
     break;
   }
   case HEAD_AT_GPU:

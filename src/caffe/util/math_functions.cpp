@@ -150,13 +150,13 @@ void caffe_axpy<double>(const int N, const double alpha, const double* X,
 template <>
 void caffe_gpu_axpy<float>(const int N, const float alpha, const float* X,
     float* Y) {
-  CUBLAS_CHECK(cublasSaxpy(Caffe::cublas_handle(), N, &alpha, X, 1, Y, 1));
+    AMDBLAS_CHECK( clAmdBlasSaxpy(N, alpha, (cl_mem)X, 0, 1, (cl_mem)Y, 0, 1, 1, &(amdDevice.CommandQueue),0, NULL, NULL) );
 }
 
 template <>
 void caffe_gpu_axpy<double>(const int N, const double alpha, const double* X,
     double* Y) {
-  CUBLAS_CHECK(cublasDaxpy(Caffe::cublas_handle(), N, &alpha, X, 1, Y, 1));
+    AMDBLAS_CHECK( clAmdBlasDaxpy(N, alpha, (cl_mem)X, 0, 1, (cl_mem)Y, 0, 1, 1, &(amdDevice.CommandQueue),0, NULL, NULL) );
 }
 
 template <>

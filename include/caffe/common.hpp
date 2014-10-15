@@ -41,9 +41,9 @@ private:\
 #define AMDBLAS_CHECK(flag) \
   do { \
      cl_int error = flag; \
-     CHECK_EQ(flag, clAmdBlasSuccess) << " " << error; \
-     if (flag != clAmdBlasSuccess){ \
-         LOG(INFO) << "AmdBlas Function Failed! Error Code:" << flag; \
+     CHECK_EQ(error, clAmdBlasSuccess) << " " << error; \
+     if (error != clAmdBlasSuccess){ \
+         LOG(INFO) << "AmdBlas Function Failed! Error Code:" << error; \
      } \
  } while(0)
 
