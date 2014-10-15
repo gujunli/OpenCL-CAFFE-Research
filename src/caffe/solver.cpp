@@ -242,7 +242,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue() {
   Dtype momentum = this->param_.momentum();
   Dtype weight_decay = this->param_.weight_decay();
   switch (Caffe::mode()) {
-  case Caffe::CPU:
+  case Caffe::GPU:
     for (int param_id = 0; param_id < net_params.size(); ++param_id) {
       // Compute the value to history, and then copy them to the blob's diff.
       Dtype local_rate = rate * net_params_lr[param_id];
@@ -262,9 +262,11 @@ void SGDSolver<Dtype>::ComputeUpdateValue() {
           history_[param_id]->cpu_data(),
           net_params[param_id]->mutable_cpu_diff());
     }
-    LOG(INFO) << " CPU computes update";
+#ifdef Track_layer
+    LOG(WARNING) << " CPU computes update";
+#endif
     break;
-  case Caffe::GPU:
+  case Caffe::CPU:
     for (int param_id = 0; param_id < net_params.size(); ++param_id) {
       // Compute the value to history, and then copy them to the blob's diff.
       Dtype local_rate = rate * net_params_lr[param_id];
@@ -284,7 +286,9 @@ void SGDSolver<Dtype>::ComputeUpdateValue() {
           history_[param_id]->gpu_data(),
           net_params[param_id]->mutable_gpu_diff());
     }
-    LOG(INFO) << " CPU computes update";
+#ifdef Track_layer
+    LOG(WARNING) << " GPU computes update";
+#endif
     break;
   default:
     LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();

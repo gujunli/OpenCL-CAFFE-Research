@@ -207,14 +207,15 @@ void caffe_copy<double>(const int N, const double* X, double* Y) {
 
 template <>
 void caffe_gpu_copy<float>(const int N, const float* X, float* Y) {
-  CUBLAS_CHECK(cublasScopy(Caffe::cublas_handle(), N, X, 1, Y, 1));
-  //AMDBLAS_CHECK( clAmdBlasScopy( N, X, 0, , bufY, 0, incy, 1, &queue, 0, NULL, &event) );
+  //CUBLAS_CHECK(cublasScopy(Caffe::cublas_handle(), N, X, 1, Y, 1));
+  AMDBLAS_CHECK( clAmdBlasScopy( N, (cl_mem)X, 0,1, (cl_mem)Y, 0, 1, 1, &(amdDevice.CommandQueue), 0, NULL, NULL) );
 
 }
 
 template <>
 void caffe_gpu_copy<double>(const int N, const double* X, double* Y) {
-  CUBLAS_CHECK(cublasDcopy(Caffe::cublas_handle(), N, X, 1, Y, 1));
+  //CUBLAS_CHECK(cublasDcopy(Caffe::cublas_handle(), N, X, 1, Y, 1));
+   AMDBLAS_CHECK( clAmdBlasDcopy( N, (cl_mem)X, 0,1, (cl_mem)Y, 0, 1, 1, &(amdDevice.CommandQueue), 0, NULL, NULL) );
 }
 
 template <>
@@ -229,12 +230,14 @@ void caffe_scal<double>(const int N, const double alpha, double *X) {
 
 template <>
 void caffe_gpu_scal<float>(const int N, const float alpha, float *X) {
-  CUBLAS_CHECK(cublasSscal(Caffe::cublas_handle(), N, &alpha, X, 1));
+  //CUBLAS_CHECK(cublasSscal(Caffe::cublas_handle(), N, &alpha, X, 1));
+   AMDBLAS_CHECK(clAmdBlasSscal(N, alpha, (cl_mem)X, 0, 1, 1, &(amdDevice.CommandQueue), 0, NULL, NULL));
 }
 
 template <>
 void caffe_gpu_scal<double>(const int N, const double alpha, double *X) {
-  CUBLAS_CHECK(cublasDscal(Caffe::cublas_handle(), N, &alpha, X, 1));
+  //CUBLAS_CHECK(cublasDscal(Caffe::cublas_handle(), N, &alpha, X, 1));
+  AMDBLAS_CHECK(clAmdBlasDscal(N, alpha, (cl_mem)X, 0, 1, 1, &(amdDevice.CommandQueue), 0, NULL, NULL));
 }
 
 template <>
