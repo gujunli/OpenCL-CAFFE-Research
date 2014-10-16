@@ -28,8 +28,8 @@ private:\
 
 // OpenCL: various checks for different function calls.
 
-//#define Track_layer
-//#define Track_data_transfer
+#define Track_layer
+#define Track_data_transfer
 
 #define OCL_CHECK(condition) \
   do { \
