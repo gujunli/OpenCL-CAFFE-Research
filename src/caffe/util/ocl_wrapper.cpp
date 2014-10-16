@@ -27,14 +27,10 @@ void get_max_gpu( const int num, const int dim, const Dtype* bottom_data, Dtype*
     OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&bottom_data) );
     OCL_CHECK( clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&scale_data) );
  
-    cl_event event;
     size_t Global_Work_Size[1] = {num};
     size_t Local_Work_Size[1] = {256};
-    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
-    OCL_CHECK( clWaitForEvents(1, &event));
-    
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL) );
     clReleaseKernel(Kernel);
-    clReleaseEvent(event);
 
 }
 
@@ -59,14 +55,10 @@ void exp_gpu( const int num, const Dtype* data, Dtype* out){
     OCL_CHECK( clSetKernelArg(Kernel, 1, sizeof(cl_mem), (void*)&data) );
     OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&out) );
 
-    cl_event event;
     size_t Global_Work_Size[1] = {num};
     size_t Local_Work_Size[1] = {256};
-    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
-    OCL_CHECK( clWaitForEvents(1, &event));
-
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL) );
     clReleaseKernel(Kernel);
-    clReleaseEvent(event);
 
 }
 
@@ -93,14 +85,10 @@ void softmax_div_gpu( const int num, const int dim, const Dtype* scale, Dtype* d
     OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&scale) );
     OCL_CHECK( clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&data) );
 
-    cl_event event;
     size_t Global_Work_Size[1] = {num*dim};
     size_t Local_Work_Size[1] = {256};
-    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
-    OCL_CHECK( clWaitForEvents(1, &event));
-
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL) );
     clReleaseKernel(Kernel);
-    clReleaseEvent(event);
 
 }
 
@@ -124,14 +112,10 @@ void scal_gpu( const int num, const Dtype alpha, Dtype* data){
     OCL_CHECK( clSetKernelArg(Kernel, 1, sizeof(Dtype), (void*)&alpha) );
     OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&data) );
 
-    cl_event event;
     size_t Global_Work_Size[1] = {num};
     size_t Local_Work_Size[1] = {256};
-    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
-    OCL_CHECK( clWaitForEvents(1, &event));
-
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL) );
     clReleaseKernel(Kernel);
-    clReleaseEvent(event);
 
 }
 
@@ -156,14 +140,10 @@ void diff_gpu( const int num, int dim, Dtype* data, const Dtype* label){
     OCL_CHECK( clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&data) );
     OCL_CHECK( clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&label) );
 
-    cl_event event;
     size_t Global_Work_Size[1] = {num};
     size_t Local_Work_Size[1] = {256};
-    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, &event) );
-    OCL_CHECK( clWaitForEvents(1, &event));
-
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL) );
     clReleaseKernel(Kernel);
-    clReleaseEvent(event);
 
 }
 
