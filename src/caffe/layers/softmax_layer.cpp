@@ -6,6 +6,7 @@
 #include "caffe/layer.hpp"
 #include "caffe/vision_layers.hpp"
 #include "caffe/util/math_functions.hpp"
+#include "caffe/util/ocl_wrapper.hpp"
 
 using std::max;
 
@@ -30,32 +31,28 @@ void SoftmaxLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 Dtype SoftmaxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
-  const Dtype* bottom_data = bottom[0]->cpu_data();
-  Dtype* top_data = (*top)[0]->mutable_cpu_data();
-  Dtype* scale_data = scale_.mutable_cpu_data();
+  const Dtype* bottom_data = bottom[0]->gpu_data();
+  Dtype* top_data = (*top)[0]->mutable_gpu_data();
+  Dtype* scale_data = scale_.mutable_gpu_data();
   int num = bottom[0]->num();
   int dim = bottom[0]->count() / bottom[0]->num();
-  memcpy(top_data, bottom_data, sizeof(Dtype) * bottom[0]->count());
+  OCL_CHECK( clEnqueueCopyBuffer (amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)top_data, (size_t)0 , (size_t)0, (size_t)(sizeof(Dtype) * bottom[0]->count()), 0, NULL, NULL));
+  
   // we need to subtract the max to avoid numerical issues, compute the exp,
   // and then normalize.
-  for (int i = 0; i < num; ++i) {
-    scale_data[i] = bottom_data[i*dim];
-    for (int j = 0; j < dim; ++j) {
-      scale_data[i] = max(scale_data[i], bottom_data[i * dim + j]);
-    }
-  }
+  get_max_gpu<Dtype>(num, dim, bottom_data, scale_data);
   // subtraction
-  caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num, dim, 1, -1.,
-    scale_data, sum_multiplier_.cpu_data(), 1., top_data);
+  caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num, dim, 1, -1., scale_data, sum_multiplier_.gpu_data(), 1., top_data);
   // Perform exponentiation
-  caffe_exp<Dtype>(num * dim, top_data, top_data);
+  exp_gpu<Dtype>(num*dim, top_data, top_data);
   // sum after exp
-  caffe_cpu_gemv<Dtype>(CblasNoTrans, num, dim, 1., top_data,
-      sum_multiplier_.cpu_data(), 0., scale_data);
+  caffe_gpu_gemvv<Dtype>(CblasNoTrans, num, dim, (Dtype)1., top_data, (size_t)0, dim, reinterpret_cast<const Dtype*>(sum_multiplier_.gpu_data()), (size_t)0, (Dtype)0., 1, scale_data, (size_t)0, 1); 
   // Do division
-  for (int i = 0; i < num; ++i) {
-    caffe_scal<Dtype>(dim, Dtype(1.) / scale_data[i], top_data + i * dim);
-  }
+  softmax_div_gpu<Dtype>(num, dim, scale_data, top_data);
+
+#ifdef Track_layer
+  LOG(WARNING) << "softmax layer fp done";
+#endif
   return Dtype(0);
 }
 
@@ -80,6 +77,10 @@ void SoftmaxLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       scale_data, sum_multiplier_.cpu_data(), 1., bottom_diff);
   // elementwise multiplication
   caffe_mul<Dtype>(top[0]->count(), bottom_diff, top_data, bottom_diff);
+  
+#ifdef Track_layer
+  LOG(WARNING) << "softmax layer bp done (CPU)";
+#endif
 }
 
 
