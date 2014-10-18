@@ -56,6 +56,8 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   int count = (*top)[0]->count();
   switch (this->layer_param_.pooling_param().pool()) {
   case PoolingParameter_PoolMethod_MAX:{
+
+    //max_pool_fp();
     cl_int _err=0;    
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"MaxPoolForwardfloat",&_err);
     if(NULL == Kernel){
@@ -77,13 +79,10 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     ret|=clSetKernelArg(Kernel,10,sizeof(cl_mem),(void*)&top_data);
     OCL_CHECK(ret);
 
-    cl_event eventPoint;
     size_t Global_Work_Size[]={count * 1};
     size_t Local_Work_Size[]={256};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,&eventPoint));
-    clWaitForEvents(1,&eventPoint);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,NULL));
     clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
 #ifdef Track_layer
     LOG(WARNING) << "Max pool fp done";
 #endif
@@ -91,6 +90,7 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   } 
 
   case PoolingParameter_PoolMethod_AVE:{
+    //ave_pool_fp();
     cl_int _err = 0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"AvePoolForwardfloat",&_err);
     if(NULL == Kernel){
@@ -113,13 +113,11 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     ret |= clSetKernelArg(Kernel,11,sizeof(cl_mem),(void*)&top_data);
     OCL_CHECK(ret);
 
-    cl_event eventPoint;
     size_t uiGlobal_Work_Size[]={count * 1};
     size_t uiLocal_Work_Size[]={256};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint));
-    clWaitForEvents(1,&eventPoint);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL));
     clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);  
+
 #ifdef Track_layer
     LOG(WARNING) << "Avg pool fp done";
 #endif
@@ -149,6 +147,7 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   // loop to save time, although this results in more codes.
   switch (this->layer_param_.pooling_param().pool()) {
   case PoolingParameter_PoolMethod_MAX:{
+    //max_pool_bp();
     // The main loop
     cl_int _err=0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"MaxPoolBackwardfloat",&_err);
@@ -173,13 +172,11 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     ret|=clSetKernelArg(Kernel,12,sizeof(cl_mem),(void*)&bottom_diff);
     OCL_CHECK(ret);
 
-    cl_event eventPoint;
     size_t uiGlobal_Work_Size[]={count};
     size_t uiLocal_Work_Size[]={64};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint));
-    clWaitForEvents(1,&eventPoint);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL));
     clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
+
 #ifdef Track_layer
     LOG(WARNING) << "Max pool bp done";
 #endif
@@ -187,6 +184,7 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }
   case PoolingParameter_PoolMethod_AVE:{
     
+    //max_pool_bp();
     cl_int _err=0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"AvePoolBackwardfloat",&_err);
     if(NULL == Kernel){
@@ -209,13 +207,10 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     ret |= clSetKernelArg(Kernel,11,sizeof(cl_mem),(void*)&bottom_diff);
     OCL_CHECK(ret);
 
-    cl_event eventPoint;
     size_t uiGlobal_Work_Size[]={count};
     size_t uiLocal_Work_Size[]={64};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint));
-    clWaitForEvents(1,&eventPoint);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL));
     clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
 #ifdef Track_layer
     LOG(WARNING) << "AVE pool bp done";
 #endif

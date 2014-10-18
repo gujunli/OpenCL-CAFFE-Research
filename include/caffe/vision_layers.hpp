@@ -55,7 +55,8 @@ template <typename Dtype>
 class ConvolutionLayer : public Layer<Dtype> {
  public:
   explicit ConvolutionLayer(const LayerParameter& param)
-      : Layer<Dtype>(param) {}
+      : Layer<Dtype>(param){}
+  ~ConvolutionLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -68,6 +69,7 @@ class ConvolutionLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup(const int bottom_offset, const int top_offset);  
 
   int kernel_size_;
   int stride_;
@@ -84,6 +86,12 @@ class ConvolutionLayer : public Layer<Dtype> {
   int M_;
   int K_;
   int N_;
+
+//opencl related data structures
+protected:
+  cl_kernel im2col_kernel, col2im_kernel;
+  cl_mem sub_top, sub_weight, sub_bottom, sub_im2col;
+  cl_mem sub_top_diff, sub_col2im;
 };
 
 /* EltwiseProductLayer

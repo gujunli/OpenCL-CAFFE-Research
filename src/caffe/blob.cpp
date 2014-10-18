@@ -188,13 +188,9 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
     break;
   case Caffe::CPU:
     if (copy_diff) {
-      clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)source.gpu_diff(), (cl_mem)diff_->mutable_gpu_data(), 0, 0, count_*sizeof(Dtype), 0, NULL, NULL);
-      //memcpy(diff_->mutable_cpu_data(), source.cpu_diff(),
-       //   sizeof(Dtype) * count_);
+      OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)source.gpu_diff(), (cl_mem)diff_->mutable_gpu_data(), 0, 0, count_*sizeof(Dtype), 0, NULL, NULL) );
     } else {
-       clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)source.gpu_data(), (cl_mem)diff_->mutable_gpu_data(), 0, 0, count_*sizeof(Dtype), 0, NULL, NULL);
-     // memcpy(data_->mutable_cpu_data(), source.cpu_data(),
-      //  sizeof(Dtype) * count_);
+       OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)source.gpu_data(), (cl_mem)diff_->mutable_gpu_data(), 0, 0, count_*sizeof(Dtype), 0, NULL, NULL) );
     }
 #ifdef Track_data_transfer
     LOG(WARNING) << "CPU Copy From";

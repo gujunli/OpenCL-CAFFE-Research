@@ -16,6 +16,8 @@ Dtype ReLULayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   const int count = bottom[0]->count();
+    
+   //Relu_gpu_fp(count, bottom_data, top_data);
     cl_int _err=0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"ReLUForwardfloat",&_err);
     if(NULL == Kernel){
@@ -26,13 +28,11 @@ Dtype ReLULayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     ret|=clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&bottom_data);
     ret|=clSetKernelArg(Kernel,2,sizeof(cl_mem),(void*)&top_data);
     OCL_CHECK(ret);
-    cl_event eventPoint;
     size_t Global_Work_Size[]={count * 1};
     size_t Local_Work_Size[]={256};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,&eventPoint));
-    clWaitForEvents(1,&eventPoint);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,NULL));
     clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
+
 #ifdef Track_layer
     LOG(WARNING) << "ReLu fp done";
 #endif
@@ -48,7 +48,8 @@ void ReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const Dtype* top_diff = top[0]->gpu_diff();
     Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
     const int count = (*bottom)[0]->count();
-
+   
+    //Relu_gpu_bp(count, top_diff, bottom_data, bottom_diff);
     cl_int _err=0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"ReLUBackwardfloat",&_err);
     if(NULL == Kernel){
@@ -60,13 +61,11 @@ void ReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     ret|=clSetKernelArg(Kernel,2,sizeof(cl_mem),(void*)&bottom_data);
     ret|=clSetKernelArg(Kernel,3,sizeof(cl_mem),(void*)&bottom_diff);
     OCL_CHECK(ret);
-    cl_event eventPoint;
     size_t Global_Work_Size[]={count * 1};
     size_t Local_Work_Size[]={256};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,&eventPoint));
-    clWaitForEvents(1,&eventPoint);
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,NULL));
     clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
+
 #ifdef Track_layer
     LOG(WARNING) << "ReLu bp done";
 #endif

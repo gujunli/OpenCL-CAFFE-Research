@@ -77,15 +77,10 @@ template void col2im_cpu<double>(const double* data_col, const int channels,
 
 
 template <typename Dtype>
-void im2col_gpu_ocl(cl_mem data_im, const int channels,
+void im2col_gpu(cl_kernel Kernel, cl_mem data_im, const int channels,
     const int height, const int width, const int ksize, const int pad,
     const int stride, Dtype* data_col) {
     
-    cl_int _err=0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"im2colfloat", &_err);
-    if(NULL==Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n",_err);
-    }
     int height_col = (height + 2 * pad - ksize) / stride + 1;
     int width_col = (width + 2 * pad - ksize) / stride + 1;
     int num_kernels = channels * height_col * width_col;
@@ -101,33 +96,23 @@ void im2col_gpu_ocl(cl_mem data_im, const int channels,
     ret|=clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&height_col);
     ret|=clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&width_col);
     ret|=clSetKernelArg(Kernel,9,sizeof(cl_mem),(void*)&data_col);
+    OCL_CHECK(ret);
 
-    if(ret!=CL_SUCCESS){
-        fprintf(stderr,"Failed to Set Args\n");
-    }
-
-    cl_event eventPoint;
     size_t uiGlobal_Work_Size[] = {num_kernels};
     size_t uiLocal_Work_Size[] = {64};
-    cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
-    clWaitForEvents(1,&eventPoint);
-    if(CL_SUCCESS!=iStatus){
-        fprintf(stderr,"Failed to enqueue kernel\n");
-    }
-    clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL) );
 }
 
-template void im2col_gpu_ocl<float>(cl_mem data_im, const int channels,
+template void im2col_gpu<float>(cl_kernel Kernel, cl_mem data_im, const int channels,
     const int height, const int width, const int ksize, const int pad,
     const int stride, float* data_col);
-template void im2col_gpu_ocl<double>(cl_mem data_im, const int channels,
+template void im2col_gpu<double>(cl_kernel Kernel, cl_mem data_im, const int channels,
     const int height, const int width, const int ksize, const int pad,
     const int stride, double* data_col);
 
 
 template <typename Dtype>
-void col2im_gpu_ocl(cl_mem data_col, const int channels,
+void col2im_gpu(cl_kernel Kernel, cl_mem data_col, const int channels,
     const int height, const int width, const int ksize, const int pad,
     const int stride, Dtype* data_im) {
   
@@ -137,12 +122,6 @@ void col2im_gpu_ocl(cl_mem data_col, const int channels,
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
   // NOLINT_NEXT_LINE(whitespace/operatiors)
-
-    cl_int _err=0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"col2imfloat",&_err);
-    if(NULL==Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n",_err);
-    }
 
     cl_int ret;
     ret=clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&num_kernels);
@@ -156,28 +135,18 @@ void col2im_gpu_ocl(cl_mem data_col, const int channels,
     ret|=clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&height_col);
     ret|=clSetKernelArg(Kernel,9,sizeof(cl_int),(void*)&width_col);
     ret|=clSetKernelArg(Kernel,10,sizeof(cl_mem),(void*)&data_im);
+    OCL_CHECK(ret);
 
-    if(ret!=CL_SUCCESS){
-        fprintf(stderr,"Failed to Set Args\n");
-    }
-
-    cl_event eventPoint;
     size_t uiGlobal_Work_Size[] = {num_kernels};
     size_t uiLocal_Work_Size[] = {64};
-    cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
-    clWaitForEvents(1,&eventPoint);
-    if(CL_SUCCESS!=iStatus){
-        fprintf(stderr,"Failed to enqueue kernel\n");
-    }
-    clReleaseKernel(Kernel);
-    clReleaseEvent(eventPoint);
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL) );
 }
 
 
-template void col2im_gpu_ocl<float>(cl_mem data_col, const int channels,
+template void col2im_gpu<float>(cl_kernel Kernel, cl_mem data_col, const int channels,
     const int height, const int width, const int psize, const int pad,
     const int stride, float* data_im);
-template void col2im_gpu_ocl<double>(cl_mem data_col, const int channels,
+template void col2im_gpu<double>(cl_kernel Kernel, cl_mem data_col, const int channels,
     const int height, const int width, const int psize, const int pad,
     const int stride, double* data_im);
 
