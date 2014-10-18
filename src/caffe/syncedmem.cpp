@@ -36,6 +36,9 @@ inline void SyncedMemory::to_cpu() {
     }
     OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
+#ifdef Track_data_transfer
+    LOG(WARNING) << "sync data from GPU to CPU";
+#endif
     break;
   }
   case HEAD_AT_CPU:
@@ -50,7 +53,7 @@ inline void SyncedMemory::to_gpu() {
     //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
     //To Do: implement OCL_CHECK_NULL
     cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
-    if(NULL==tmpMem){
+    if(NULL == tmpMem){
       fprintf(stderr,"Failed to create memory object 58\n");
       break;
     }
@@ -64,13 +67,16 @@ inline void SyncedMemory::to_gpu() {
     if (gpu_ptr_ == NULL) {
       //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
       cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
-      if(NULL==tmpMem){
+      if(NULL == tmpMem){
         fprintf(stderr,"Failed to create memory object\n");
       }
       gpu_ptr_ = (void*)tmpMem;
     }
     OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
+#ifdef Track_data_transfer
+    LOG(WARNING) << "sync data from CPU to GPU";
+#endif
     break;
   }
   case HEAD_AT_GPU:

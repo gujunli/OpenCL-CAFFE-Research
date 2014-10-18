@@ -26,8 +26,10 @@ private:\
 // is executed we will see a fatal log.
 #define NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented Yet"
 
-
 // OpenCL: various checks for different function calls.
+
+//#define Track_layer
+//#define Track_data_transfer
 
 #define OCL_CHECK(condition) \
   do { \
@@ -41,9 +43,9 @@ private:\
 #define AMDBLAS_CHECK(flag) \
   do { \
      cl_int error = flag; \
-     CHECK_EQ(flag, clAmdBlasSuccess) << " " << error; \
-     if (flag != clAmdBlasSuccess){ \
-         LOG(INFO) << "AmdBlas Function Failed! Error Code:" << flag; \
+     CHECK_EQ(error, clAmdBlasSuccess) << " " << error; \
+     if (error != clAmdBlasSuccess){ \
+         LOG(INFO) << "AmdBlas Function Failed! Error Code:" << error; \
      } \
  } while(0)
 

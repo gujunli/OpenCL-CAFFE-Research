@@ -117,18 +117,19 @@ void Blob<Dtype>::Update() {
     caffe_axpy<Dtype>(count_, Dtype(-1),
         reinterpret_cast<const Dtype*>(diff_->cpu_data()),
         reinterpret_cast<Dtype*>(data_->mutable_cpu_data()));
+#ifdef Track_layer
+    LOG(WARNING) << "CPU updates";
+#endif
     break;
   case SyncedMemory::HEAD_AT_GPU:
   case SyncedMemory::SYNCED:
     // perform computation on GPU
-
-    caffe_axpy<Dtype>(count_, Dtype(-1),
-        reinterpret_cast<const Dtype*>(diff_->cpu_data()),
-        reinterpret_cast<Dtype*>(data_->mutable_cpu_data()));
-
-   /* caffe_gpu_axpy<Dtype>(count_, Dtype(-1),
+     caffe_gpu_axpy<Dtype>(count_, Dtype(-1),
         reinterpret_cast<const Dtype*>(diff_->gpu_data()),
-        reinterpret_cast<Dtype*>(data_->mutable_gpu_data()));*/
+        reinterpret_cast<Dtype*>(data_->mutable_gpu_data()));
+#ifdef Track_layer
+     LOG(WARNING) << "synced GPU, GPU updates";
+#endif
     break;
   default:
     LOG(FATAL) << "Syncedmem not initialized.";
@@ -145,7 +146,8 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
       LOG(FATAL) << "Trying to copy blobs of different sizes.";
     }
   }
-  switch (Caffe::mode()) {
+  
+ /*switch (Caffe::mode()) {
   case Caffe::GPU:
     if (copy_diff) {
       CUDA_CHECK(cudaMemcpy(diff_->mutable_gpu_data(), source.gpu_diff(),
@@ -154,6 +156,7 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
       CUDA_CHECK(cudaMemcpy(data_->mutable_gpu_data(), source.gpu_data(),
           sizeof(Dtype) * count_, cudaMemcpyDeviceToDevice));
     }
+    LOG(INFO) << "GPU copy from";
     break;
   case Caffe::CPU:
     if (copy_diff) {
@@ -163,10 +166,44 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
       memcpy(data_->mutable_cpu_data(), source.cpu_data(),
         sizeof(Dtype) * count_);
     }
+    LOG(INFO) << "CPU copy from";
     break;
   default:
     LOG(FATAL) << "Unknown caffe mode.";
   }
+  */
+
+ switch (Caffe::mode()) {
+  case Caffe::GPU:
+    if (copy_diff) {
+      CUDA_CHECK(cudaMemcpy(diff_->mutable_gpu_data(), source.gpu_diff(),
+          sizeof(Dtype) * count_, cudaMemcpyDeviceToDevice));
+    } else {
+      CUDA_CHECK(cudaMemcpy(data_->mutable_gpu_data(), source.gpu_data(),
+          sizeof(Dtype) * count_, cudaMemcpyDeviceToDevice));
+    }
+#ifdef Track_data_transfer
+    LOG(WARNING) << "GPU Copy From";
+#endif
+    break;
+  case Caffe::CPU:
+    if (copy_diff) {
+      clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)source.gpu_diff(), (cl_mem)diff_->mutable_gpu_data(), 0, 0, count_*sizeof(Dtype), 0, NULL, NULL);
+      //memcpy(diff_->mutable_cpu_data(), source.cpu_diff(),
+       //   sizeof(Dtype) * count_);
+    } else {
+       clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)source.gpu_data(), (cl_mem)diff_->mutable_gpu_data(), 0, 0, count_*sizeof(Dtype), 0, NULL, NULL);
+     // memcpy(data_->mutable_cpu_data(), source.cpu_data(),
+      //  sizeof(Dtype) * count_);
+    }
+#ifdef Track_data_transfer
+    LOG(WARNING) << "CPU Copy From";
+#endif
+    break;
+  default:
+    LOG(FATAL) << "Unknown caffe mode.";
+  }
+
 }
 
 template <typename Dtype>

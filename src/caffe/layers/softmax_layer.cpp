@@ -50,6 +50,9 @@ Dtype SoftmaxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   // Do division
   softmax_div_gpu<Dtype>(num, dim, scale_data, top_data);
 
+#ifdef Track_layer
+  LOG(WARNING) << "softmax layer fp done";
+#endif
   return Dtype(0);
 }
 
@@ -74,6 +77,10 @@ void SoftmaxLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       scale_data, sum_multiplier_.cpu_data(), 1., bottom_diff);
   // elementwise multiplication
   caffe_mul<Dtype>(top[0]->count(), bottom_diff, top_data, bottom_diff);
+  
+#ifdef Track_layer
+  LOG(WARNING) << "softmax layer bp done (CPU)";
+#endif
 }
 
 

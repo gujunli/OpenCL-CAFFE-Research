@@ -84,7 +84,9 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     clWaitForEvents(1,&eventPoint);
     clReleaseKernel(Kernel);
     clReleaseEvent(eventPoint);
-    //LOG(INFO) << "MAx pool fp done";
+#ifdef Track_layer
+    LOG(WARNING) << "Max pool fp done";
+#endif
     break;
   } 
 
@@ -118,7 +120,9 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     clWaitForEvents(1,&eventPoint);
     clReleaseKernel(Kernel);
     clReleaseEvent(eventPoint);  
-    //LOG(INFO) << "Avg pool fp done";
+#ifdef Track_layer
+    LOG(WARNING) << "Avg pool fp done";
+#endif
     break;
   }
   case PoolingParameter_PoolMethod_STOCHASTIC:
@@ -176,7 +180,9 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     clWaitForEvents(1,&eventPoint);
     clReleaseKernel(Kernel);
     clReleaseEvent(eventPoint);
-    //LOG(INFO) << "Max pool bp done";
+#ifdef Track_layer
+    LOG(WARNING) << "Max pool bp done";
+#endif
     break;
   }
   case PoolingParameter_PoolMethod_AVE:{
@@ -210,7 +216,9 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     clWaitForEvents(1,&eventPoint);
     clReleaseKernel(Kernel);
     clReleaseEvent(eventPoint);
-    //LOG(INFO) << "AVE pool bp done";
+#ifdef Track_layer
+    LOG(WARNING) << "AVE pool bp done";
+#endif
 
     break;
   }

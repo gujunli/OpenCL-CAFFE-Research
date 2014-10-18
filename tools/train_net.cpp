@@ -14,7 +14,7 @@
 using namespace caffe;  // NOLINT(build/namespaces)
 
 int main(int argc, char** argv) {
-  FLAGS_log_dir = "./";
+  FLAGS_log_dir = "./log/";
   ::google::InitGoogleLogging(argv[0]);
   if (argc < 2 || argc > 3) {
     LOG(ERROR) << "Usage: train_net solver_proto_file [resume_point_file]";

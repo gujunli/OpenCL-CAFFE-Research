@@ -33,6 +33,9 @@ Dtype ReLULayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     clWaitForEvents(1,&eventPoint);
     clReleaseKernel(Kernel);
     clReleaseEvent(eventPoint);
+#ifdef Track_layer
+    LOG(WARNING) << "ReLu fp done";
+#endif
   return Dtype(0);
 }
 
@@ -64,6 +67,9 @@ void ReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     clWaitForEvents(1,&eventPoint);
     clReleaseKernel(Kernel);
     clReleaseEvent(eventPoint);
+#ifdef Track_layer
+    LOG(WARNING) << "ReLu bp done";
+#endif
 
   }
 }
