@@ -120,6 +120,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     
     OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)subTopMem, (cl_mem)top_data, 0, (size_t)((*top)[0]->offset(n) * sizeof(Dtype)), ((*top)[0]->count()/num_)*sizeof(Dtype), 0, NULL, NULL));
   }
+  //LOG(INFO) << "conv fp done";
   clReleaseMemObject(subTopMem);
   clReleaseMemObject(subWgtMem);
   clReleaseMemObject(subBotMem);
@@ -139,20 +140,23 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   Dtype* col_data_ = col_buffer_.mutable_gpu_data();
   Dtype* col_diff_ = col_buffer_.mutable_gpu_diff();
   
-  const Dtype* top_diff = top[0]->cpu_diff();
-  const Dtype* weight = this->blobs_[0]->cpu_data();
-  Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
-  const Dtype* bottom_data = (*bottom)[0]->cpu_data();
-  Dtype* bottom_diff = (*bottom)[0]->mutable_cpu_diff();
-  Dtype* col_data = col_buffer_.mutable_cpu_data();
-  Dtype* col_diff = col_buffer_.mutable_cpu_diff();
+  //const Dtype* top_diff = top[0]->cpu_diff();
+  //const Dtype* weight = this->blobs_[0]->cpu_data();
+  //Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
+  //const Dtype* bottom_data = (*bottom)[0]->cpu_data();
+  //Dtype* bottom_diff = (*bottom)[0]->mutable_cpu_diff();
+  //Dtype* col_data = col_buffer_.mutable_cpu_data();
+  //Dtype* col_diff = col_buffer_.mutable_cpu_diff();
   // bias gradient if necessary
   Dtype* bias_diff = NULL;
   Dtype* bias_diff_ = NULL;
+  cl_mem sub_diff_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
+  cl_mem sub_bottom_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((*bottom)[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
+  cl_mem sub_tmp_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((*bottom)[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
 
   if (bias_term_) {
     bias_diff_ = this->blobs_[1]->mutable_gpu_diff();
-    bias_diff = this->blobs_[1]->mutable_cpu_diff();
+    //bias_diff = this->blobs_[1]->mutable_cpu_diff();
     //memset(bias_diff, 0, sizeof(Dtype) * this->blobs_[1]->count());
     //clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0 , NULL, NULL );
     ocl_memset(bias_diff_, (Dtype)(0.), this->blobs_[1]->count());
@@ -164,16 +168,14 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     }
   }
     
-  OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0, NULL, NULL));
+  //OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)bias_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[1]->count(), bias_diff, 0, NULL, NULL));
   
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
   int top_offset = M_ * N_;
-  memset(weight_diff, 0, sizeof(Dtype) * this->blobs_[0]->count());
-  clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[0]->count(), weight_diff, 0 , NULL, NULL );
+  //ocl_memset(weight_diff_, (Dtype)0, sizeof(Dtype) * this->blobs_[0]->count());
+  //clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, sizeof(Dtype) * this->blobs_[0]->count(), weight_diff, 0 , NULL, NULL );
   cl_int err;
-  cl_mem sub_diff_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
-  cl_mem sub_bottom_=clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((*bottom)[0]->offset(1)*sizeof(Dtype)), NULL, NULL);
   
   for (int n = 0; n < num_; ++n) {
     OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff_, sub_diff_, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, (top[0]->offset(1)*sizeof(Dtype)), 0, NULL, NULL));
@@ -182,7 +184,7 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     // we will need to recompute them.
     im2col_gpu_ocl(sub_bottom_, channels_, height_,
                       width_, kernel_size_, pad_, stride_, col_data_);
-    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_data_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_data, 0, NULL, NULL));
+    //OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_data_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_data, 0, NULL, NULL));
    
     // gradient w.r.t. weight. Note that we will accumulate diffs.
      
@@ -193,7 +195,7 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         (Dtype*)weight_diff_);
     }
 
-    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, this->blobs_[0]->count()*sizeof(Dtype), weight_diff, 0, NULL, NULL));
+    //OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)weight_diff_, CL_TRUE, 0, this->blobs_[0]->count()*sizeof(Dtype), weight_diff, 0, NULL, NULL));
    
    if (propagate_down) {
       for (int g = 0; g < group_; ++g) {
@@ -202,17 +204,22 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
           (Dtype*)sub_diff_,
           (Dtype)0., col_diff_);
       }
-    OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_diff_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_diff, 0, NULL, NULL));
+    //OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)col_diff_, CL_TRUE, 0, col_buffer_.count()*sizeof(Dtype), col_diff, 0, NULL, NULL));
     
       // col2im back to the data
-      col2im_cpu(col_diff, channels_, height_, width_, kernel_size_, pad_,
-          stride_, bottom_diff + (*bottom)[0]->offset(n));
+      col2im_gpu_ocl((cl_mem)col_diff_, channels_, height_, width_, kernel_size_, pad_,
+          stride_, (Dtype*)sub_tmp_);
+      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, sub_tmp_, (cl_mem)bottom_diff_, 0, (size_t)((*bottom)[0]->offset(n)*sizeof(Dtype)), (*bottom)[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
+
+      //col2im_cpu(col_diff, channels_, height_, width_, kernel_size_, pad_,
+        //  stride_, bottom_diff + (*bottom)[0]->offset(n));
     }
 
   
   }
+    //LOG(INFO) << "conv bp done";
     clReleaseMemObject(sub_diff_);
-    //clReleaseMemObject(subWgtMem);
+    clReleaseMemObject(sub_tmp_);
     clReleaseMemObject(sub_bottom_);
 
 }

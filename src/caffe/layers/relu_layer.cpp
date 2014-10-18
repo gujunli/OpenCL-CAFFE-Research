@@ -45,10 +45,6 @@ void ReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const Dtype* top_diff = top[0]->gpu_diff();
     Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
     const int count = (*bottom)[0]->count();
-    /*
-    for (int i = 0; i < count; ++i) {
-      bottom_diff[i] = top_diff[i] * (bottom_data[i] > 0);
-    }*/
 
     cl_int _err=0;
     cl_kernel Kernel = clCreateKernel(amdDevice.Program,"ReLUBackwardfloat",&_err);

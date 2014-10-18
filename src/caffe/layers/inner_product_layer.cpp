@@ -70,6 +70,7 @@ Dtype InnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()),
         this->blobs_[1]->gpu_data(), (Dtype)1., (Dtype*)top_data);
     }
+  //LOG(INFO) << "fc fp done";
 
   return Dtype(0);
 }
@@ -97,6 +98,7 @@ void InnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         (Dtype*)top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
         (*bottom)[0]->mutable_gpu_diff());
   }
+  //LOG(INFO) << "fc bp done";
 }
 
 INSTANTIATE_CLASS(InnerProductLayer);

@@ -40,6 +40,7 @@ Dtype SoftmaxWithLossLayer<Dtype>::Forward_cpu(
     loss += -log(max(prob_data[i * dim + static_cast<int>(label[i])],
                      Dtype(FLT_MIN)));
   }
+  //LOG(INFO) << "softmax with loss fp done";
   return loss / num;
 }
 
@@ -56,6 +57,7 @@ void SoftmaxWithLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   int dim = prob_.count() / num;
   diff_gpu(num, dim, bottom_diff, label);
   scal_gpu(prob_.count(), Dtype(1) / num, bottom_diff);
+  //LOG(INFO) << "softmax with loss bp done";
 }
 
 
