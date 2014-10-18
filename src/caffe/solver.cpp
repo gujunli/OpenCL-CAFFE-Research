@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include <cmath>
 
 #include "caffe/net.hpp"
 #include "caffe/proto/caffe.pb.h"
@@ -82,12 +81,11 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   vector<Blob<Dtype>*> bottom_vec;
   while (iter_++ < param_.max_iter()) {
     Dtype loss = net_->ForwardBackward(bottom_vec);
-    Dtype avg_prob = exp(-loss); 
     ComputeUpdateValue();
     net_->Update();
 
     if (param_.display() && iter_ % param_.display() == 0) {
-      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss <<",  average prob = "<< avg_prob;
+      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
     }
     if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
       Test();

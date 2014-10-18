@@ -60,16 +60,17 @@ void InnerProductLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 Dtype InnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
-  const Dtype* bottom_data = bottom[0]->cpu_data();
-  Dtype* top_data = (*top)[0]->mutable_cpu_data();
-  const Dtype* weight = this->blobs_[0]->cpu_data();
-  caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, (Dtype)1.,
-      bottom_data, weight, (Dtype)0., top_data);
+  const Dtype* bottom_data = bottom[0]->gpu_data();
+  Dtype* top_data = (*top)[0]->mutable_gpu_data();
+  const Dtype* weight = this->blobs_[0]->gpu_data();
+  caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, (Dtype)1.,
+      (Dtype*)bottom_data, (Dtype*)weight, (Dtype)0., (Dtype*)top_data);
   if (bias_term_) {
-    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
-        reinterpret_cast<const Dtype*>(bias_multiplier_->cpu_data()),
-        this->blobs_[1]->cpu_data(), (Dtype)1., top_data);
-  }
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
+        reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()),
+        this->blobs_[1]->gpu_data(), (Dtype)1., (Dtype*)top_data);
+    }
+
   return Dtype(0);
 }
 
@@ -77,22 +78,24 @@ template <typename Dtype>
 void InnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const bool propagate_down,
     vector<Blob<Dtype>*>* bottom) {
-  const Dtype* top_diff = top[0]->cpu_diff();
-  const Dtype* bottom_data = (*bottom)[0]->cpu_data();
+  const Dtype* top_diff = top[0]->gpu_diff();
+  const Dtype* bottom_data = (*bottom)[0]->gpu_data();
+  Dtype* weight_diff = this->blobs_[0]->mutable_gpu_diff();
   // Gradient with respect to weight
-  caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans, N_, K_, M_, (Dtype)1.,
-      top_diff, bottom_data, (Dtype)0., this->blobs_[0]->mutable_cpu_diff());
+  caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, N_, K_, M_, (Dtype)1.,
+      top_diff, bottom_data, (Dtype)0., weight_diff);
   if (bias_term_) {
     // Gradient with respect to bias
-    caffe_cpu_gemv<Dtype>(CblasTrans, M_, N_, (Dtype)1., top_diff,
-        reinterpret_cast<const Dtype*>(bias_multiplier_->cpu_data()), (Dtype)0.,
-        this->blobs_[1]->mutable_cpu_diff());
+    caffe_gpu_gemvv<Dtype>(CblasTrans, M_, N_, (Dtype)1., (Dtype*)top_diff,
+        (size_t)0, N_, reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), 
+         (size_t)0, (Dtype)0., 1,
+        this->blobs_[1]->mutable_gpu_diff(), (size_t)0, 1);
   }
   if (propagate_down) {
     // Gradient with respect to bottom data
-    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
-        top_diff, this->blobs_[0]->cpu_data(), (Dtype)0.,
-        (*bottom)[0]->mutable_cpu_diff());
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
+        (Dtype*)top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
+        (*bottom)[0]->mutable_gpu_diff());
   }
 }
 
