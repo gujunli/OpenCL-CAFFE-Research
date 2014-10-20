@@ -37,49 +37,6 @@ __global__ void im2col_gpu_kernel(const int n, const Dtype* data_im,
   }
 }
 
-/*
-template <typename Dtype>
-void im2col_gpu(const Dtype* data_im, const int channels,
-    const int height, const int width, const int ksize, const int pad,
-    const int stride, Dtype* data_col) {
-    
-    const char *pFileName = "im2col_kernel.cl";
-    const char *pSource;
-    string strSource = "";
-    amdDevice.ConvertToString(pFileName,strSource);
-    pSource = strSource.c_str();
-    size_t uiArrSourceSize[]={0};
-    uiArrSourceSize[0]=strlen(pSource);
-    cl_program Program=NULL;
-    Program=clCreateProgramWithSource(amdDevice.Context,1,&pSource,uiArrSourceSize,NULL);
-    if(NULL==Program){
-        fprintf(stderr,"Err: Failed to create program\n");
-    }
-
-    cl_int _err=0;
-    cl_kernel Kernel = clCreateKernel(Program,"im2colfloat",&_err);
-    if(NULL==Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n",_err);
-    }
-    int height_col = (height + 2 * pad - ksize) / stride + 1;
-    int width_col = (width + 2 * pad - ksize) / stride + 1;
-    int num_kernels = channels * height_col * width_col; 
-    clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&num_kernels);
-    clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&data_im);
-    clSetKernelArg(Kernel,2,sizeof(cl_int),(void*)&height);
-    clSetKernelArg(Kernel,3,sizeof(cl_int),(void*)&width);
-    clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&ksize);
-    clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&pad);
-    clSetKernelArg(Kernel,6,sizeof(cl_int),(void*)&stride);
-    clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&height_col);
-    clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&width_col);
-    clSetKernelArg(Kernel,9,sizeof(cl_mem),(void*)&data_col);
-    
-    clReleaseKernel(Kernel);
-    clReleaseProgram(Program);
-
-}  
-*/
 template <typename Dtype>
 void im2col_gpu(const Dtype* data_im, const int channels,
     const int height, const int width, const int ksize, const int pad,
@@ -96,7 +53,6 @@ void im2col_gpu(const Dtype* data_im, const int channels,
       width_col, data_col);
   CUDA_POST_KERNEL_CHECK;
 }
-
 
 
 // Explicit instantiation
@@ -122,7 +78,7 @@ __global__ void col2im_gpu_kernel(const int n, const Dtype* data_col,
     int w_col_end = min(w / stride + 1, width_col);
     int h_col_start = (h < ksize) ? 0 : (h - ksize) / stride + 1;
     int h_col_end = min(h / stride + 1, height_col);
-    
+    /*
     for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
       for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
         // the col location: [c * width * height + h_out, w_out]
@@ -130,7 +86,7 @@ __global__ void col2im_gpu_kernel(const int n, const Dtype* data_col,
         val += data_col[(c_col * height_col + h_col) * width_col + w_col];
       }
     }
-    
+    */
     // equivalent implementation
     int offset = (c * ksize * ksize + h * ksize + w) * height_col * width_col;
     int coeff_h_col = (1 - stride * ksize * height_col) * width_col;
