@@ -263,6 +263,24 @@ Dtype DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   // First, join the thread
   JoinPrefetchThread();
   // Copy the data
+  caffe_copy(prefetch_data_->count(), prefetch_data_->cpu_data(),
+             (*top)[0]->mutable_cpu_data());
+  if (output_labels_) {
+    caffe_copy(prefetch_label_->count(), prefetch_label_->cpu_data(),
+               (*top)[1]->mutable_cpu_data());
+  }
+  // Start a new prefetch thread
+  CreatePrefetchThread();
+  return Dtype(0.);
+}
+
+
+template <typename Dtype>
+Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
+  // First, join the thread
+  JoinPrefetchThread();
+  // Copy the data
   OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem) (*top)[0]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_data_->count(), (void*) prefetch_data_->cpu_data(), 0, NULL, NULL) );
   if (output_labels_) {
   OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype) * prefetch_label_->count(), (void*) prefetch_label_->cpu_data(), 0, NULL, NULL));

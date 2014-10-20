@@ -29,7 +29,7 @@ void SoftmaxLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-Dtype SoftmaxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+Dtype SoftmaxLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
@@ -53,6 +53,39 @@ Dtype SoftmaxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 #ifdef Track_layer
   LOG(WARNING) << "softmax layer fp done";
 #endif
+  return Dtype(0);
+}
+
+template <typename Dtype>
+Dtype SoftmaxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+    vector<Blob<Dtype>*>* top) {
+  const Dtype* bottom_data = bottom[0]->cpu_data();
+  Dtype* top_data = (*top)[0]->mutable_cpu_data();
+  Dtype* scale_data = scale_.mutable_cpu_data();
+  int num = bottom[0]->num();
+  int dim = bottom[0]->count() / bottom[0]->num();
+  memcpy(top_data, bottom_data, sizeof(Dtype) * bottom[0]->count());
+  // we need to subtract the max to avoid numerical issues, compute the exp,
+  // and then normalize.
+  std::cout<<"num"<<num<<" dim"<<dim<<std::endl;
+  for (int i = 0; i < num; ++i) {
+    scale_data[i] = bottom_data[i*dim];
+    for (int j = 0; j < dim; ++j) {
+      scale_data[i] = max(scale_data[i], bottom_data[i * dim + j]);
+    }
+  }
+  // subtraction
+  caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num, dim, 1, -1.,
+    scale_data, sum_multiplier_.cpu_data(), 1., top_data);
+  // Perform exponentiation
+  caffe_exp<Dtype>(num * dim, top_data, top_data);
+  // sum after exp
+  caffe_cpu_gemv<Dtype>(CblasNoTrans, num, dim, 1., top_data,
+      sum_multiplier_.cpu_data(), 0., scale_data);
+  // Do division
+  for (int i = 0; i < num; ++i) {
+    caffe_scal<Dtype>(dim, Dtype(1.) / scale_data[i], top_data + i * dim);
+  }
   return Dtype(0);
 }
 
@@ -83,6 +116,13 @@ void SoftmaxLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 #endif
 }
 
+//Junli: since now softmax_layer backward is not called. we use backward_cpu as 
+//backward_gpu
+template <typename Dtype>
+void SoftmaxLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+    const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+    Backward_cpu(top, propagate_down, bottom);
+}
 
 INSTANTIATE_CLASS(SoftmaxLayer);
 
