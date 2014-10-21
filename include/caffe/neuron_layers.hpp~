@@ -154,8 +154,8 @@ class ReLULayer : public NeuronLayer<Dtype> {
   void ocl_setup();
 
  protected:
-   cl_kernel ReLUForward_kernel;
-   cl_kernel ReLUBackward_kernel;
+  cl_kernel ReLUForward_kernel;
+  cl_kernel ReLUBackward_kernel;
 };
 
 /* SigmoidLayer

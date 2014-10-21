@@ -31,6 +31,7 @@ class Layer {
       }
     }
   virtual ~Layer() {}
+
   // SetUp: your function should implement this.
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) = 0;

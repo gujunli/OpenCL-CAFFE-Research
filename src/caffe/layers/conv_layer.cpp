@@ -32,16 +32,18 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 
 
 template <typename Dtype>
-  ConvolutionLayer<Dtype>::~ConvolutionLayer(){
+ ConvolutionLayer<Dtype>::~ConvolutionLayer(){
+ 
+//if(Caffe::mode() == Caffe::GPU){
   OCL_CHECK( clReleaseMemObject(sub_top) );
   OCL_CHECK( clReleaseMemObject(sub_weight) );
   OCL_CHECK( clReleaseMemObject(sub_bottom) );
   OCL_CHECK( clReleaseMemObject(sub_im2col) );
   OCL_CHECK( clReleaseMemObject(sub_top_diff) );
   OCL_CHECK( clReleaseMemObject(sub_col2im) );
-  OCL_CHECK( clReleaseMemObject(sub_bottom) );
   OCL_CHECK( clReleaseKernel(im2col_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_kernel) );
+  //}
 }
 
 
@@ -87,7 +89,8 @@ void ConvolutionLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     }
 
     //initializa OpenCL kernels and cl_mem objects
-    ocl_setup(bottom[0]->offset(1), (*top)[0]->offset(1));
+   //if(Caffe::mode() == Caffe::GPU)
+      ocl_setup(bottom[0]->offset(1), (*top)[0]->offset(1));
 
     // Intialize the weight
     this->blobs_[0].reset(new Blob<Dtype>(

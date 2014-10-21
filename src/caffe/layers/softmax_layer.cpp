@@ -7,6 +7,7 @@
 #include "caffe/vision_layers.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/ocl_wrapper.hpp"
+#include  <iostream>
 
 using std::max;
 

@@ -6,7 +6,7 @@
 namespace caffe {
 
 template <typename Dtype>
-void get_max_gpu( const int num, const int dim, const Dtype* bottom_data, Dtype* scale_data);
+void get_max_gpu(const int num, const int dim, const Dtype* bottom_data, Dtype* scale_data);
 
 template <typename Dtype>
 void exp_gpu(const int num, const Dtype* data, Dtype* out);
@@ -19,6 +19,25 @@ void scal_gpu(const int num, const Dtype alpha, Dtype* data);
 
 template <typename Dtype>
 void diff_gpu(const int num, const int dim, Dtype* data, const Dtype* label);
+
+template <typename Dtype>
+void max_pool_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, const int clnum, const int channels_, const int height_, const int width_, const int pooled_height_, const int pooled_width_, const int kernel_size_, const int stride_, Dtype* top_data);
+
+template <typename Dtype>
+void ave_pool_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, const int clnum, const int channels_, const int height_, const int width_, const int pooled_height_, const int pooled_width_, const int kernel_size_, const int stride_, const int pad_, Dtype* top_data);
+
+template <typename Dtype>
+void max_pool_bp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, const Dtype* top_data, const Dtype* top_diff, const int clnum, const int channels_, const int height_, const int width_, const int pooled_height_, const int pooled_width_, const int kernel_size_, const int stride_, Dtype* bottom_diff );
+
+template <typename Dtype>
+void ave_pool_bp_gpu(cl_kernel Kernel, const int count, const Dtype* top_diff, const int clnum, const int channels_, const int intheight_, const int width_, const int pooled_height_, const int pooled_width_, const int kernel_size_, const int stride_, const int pad_, Dtype* bottom_diff);
+
+template <typename Dtype>
+void Relu_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, Dtype* top_data);
+
+template <typename Dtype>
+void Relu_bp_gpu(cl_kernel Kernel, const int count, const Dtype* top_diff, const Dtype* bottom_data, Dtype* bottom_diff);
+
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_OCL_UTIL_HPP_

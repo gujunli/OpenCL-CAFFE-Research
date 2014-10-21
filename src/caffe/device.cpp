@@ -1,6 +1,7 @@
 #include "caffe/device.hpp"
 #include <stdio.h>
 #include <fstream>
+#include <iostream>
 Device amdDevice;
 char* buildOption = "-x clc++ ";
 cl_int Device::Init(){

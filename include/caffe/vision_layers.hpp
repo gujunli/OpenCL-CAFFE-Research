@@ -56,7 +56,7 @@ class ConvolutionLayer : public Layer<Dtype> {
  public:
   explicit ConvolutionLayer(const LayerParameter& param)
       : Layer<Dtype>(param){}
-  ~ConvolutionLayer();
+  virtual  ~ConvolutionLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -143,6 +143,7 @@ class Im2colLayer : public Layer<Dtype> {
  public:
   explicit Im2colLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
+  ~Im2colLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -155,6 +156,7 @@ class Im2colLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup(const int, const int);
 
   int kernel_size_;
   int stride_;
@@ -162,6 +164,9 @@ class Im2colLayer : public Layer<Dtype> {
   int height_;
   int width_;
   int pad_;
+
+  cl_mem col_data, sub_bottom, sub_top_diff, sub_bottom_diff;
+  cl_kernel im2col_kernel, col2im_kernel;
 };
 
 /* InnerProductLayer
@@ -302,6 +307,7 @@ class PoolingLayer : public Layer<Dtype> {
  public:
   explicit PoolingLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
+  ~PoolingLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -314,6 +320,7 @@ class PoolingLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup();
 
   int kernel_size_;
   int stride_;
@@ -324,6 +331,13 @@ class PoolingLayer : public Layer<Dtype> {
   int pooled_height_;
   int pooled_width_;
   Blob<Dtype> rand_idx_;
+//opencl related data structures
+protected:
+  cl_kernel MaxPoolForward_kernel, 
+	    AvePoolForward_kernel, 
+            MaxPoolBackward_kernel, 
+            AvePoolBackward_kernel;
+ 
 };
 
 /* SoftmaxLayer

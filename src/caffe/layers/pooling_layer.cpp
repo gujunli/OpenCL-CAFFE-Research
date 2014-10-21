@@ -8,11 +8,20 @@
 #include "caffe/vision_layers.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/ocl_util.hpp"
+#include "caffe/util/ocl_wrapper.hpp"
 
 using std::max;
 using std::min;
 
 namespace caffe {
+
+template <typename Dtype> 
+PoolingLayer<Dtype>::~PoolingLayer(){
+  OCL_CHECK( clReleaseKernel(MaxPoolForward_kernel) );
+  OCL_CHECK( clReleaseKernel(AvePoolForward_kernel) );
+  OCL_CHECK( clReleaseKernel(MaxPoolBackward_kernel) );
+  OCL_CHECK( clReleaseKernel(AvePoolBackward_kernel) );
+}
 
 template <typename Dtype>
 void PoolingLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
@@ -42,6 +51,16 @@ void PoolingLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     rand_idx_.Reshape(bottom[0]->num(), channels_, pooled_height_,
       pooled_width_);
   }
+  //Intialize OpenCL related
+  ocl_setup();
+}
+
+template <typename Dtype>
+ void PoolingLayer<Dtype>::ocl_setup(){
+  MaxPoolForward_kernel = clCreateKernel(amdDevice.Program, "MaxPoolForwardfloat", NULL);
+  AvePoolForward_kernel = clCreateKernel(amdDevice.Program, "AvePoolForwardfloat", NULL);
+  MaxPoolBackward_kernel = clCreateKernel(amdDevice.Program, "MaxPoolBackwardfloat", NULL);
+  AvePoolBackward_kernel = clCreateKernel(amdDevice.Program, "AvePoolBackwardfloat", NULL);
 }
 
 // TODO(Yangqing): Is there a faster way to do pooling in the channel-first
@@ -54,70 +73,17 @@ Dtype PoolingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   // Different pooling methods. We explicitly do the switch outside the for
   // loop to save time, although this results in more codes.
   int count = (*top)[0]->count();
+  int clnum = bottom[0]->num();    
   switch (this->layer_param_.pooling_param().pool()) {
   case PoolingParameter_PoolMethod_MAX:{
-
-    //max_pool_fp();
-    cl_int _err=0;    
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"MaxPoolForwardfloat",&_err);
-    if(NULL == Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n",_err);
-    }
-    int clnum = bottom[0]->num();    
-
-    cl_int ret;
-    ret=clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&count);
-    ret|=clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&bottom_data);
-    ret|=clSetKernelArg(Kernel,2,sizeof(cl_int),(void*)&clnum);
-    ret|=clSetKernelArg(Kernel,3,sizeof(cl_int),(void*)&channels_);
-    ret|=clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&height_);
-    ret|=clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&width_);
-    ret|=clSetKernelArg(Kernel,6,sizeof(cl_int),(void*)&pooled_height_);
-    ret|=clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&pooled_width_);
-    ret|=clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&kernel_size_);
-    ret|=clSetKernelArg(Kernel,9,sizeof(cl_int),(void*)&stride_);
-    ret|=clSetKernelArg(Kernel,10,sizeof(cl_mem),(void*)&top_data);
-    OCL_CHECK(ret);
-
-    size_t Global_Work_Size[]={count * 1};
-    size_t Local_Work_Size[]={256};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL, Global_Work_Size, Local_Work_Size,0,NULL,NULL));
-    clReleaseKernel(Kernel);
+    max_pool_fp_gpu(MaxPoolForward_kernel, count, bottom_data, clnum, channels_, height_, width_, pooled_height_, pooled_width_, kernel_size_, stride_, top_data);
 #ifdef Track_layer
     LOG(WARNING) << "Max pool fp done";
 #endif
     break;
   } 
-
   case PoolingParameter_PoolMethod_AVE:{
-    //ave_pool_fp();
-    cl_int _err = 0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"AvePoolForwardfloat",&_err);
-    if(NULL == Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n", _err);
-    }
-    int clnum = bottom[0]->num();
-
-    cl_int ret;
-    ret = clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&count);
-    ret |= clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&bottom_data);
-    ret |= clSetKernelArg(Kernel,2,sizeof(cl_int),(void*)&clnum);
-    ret |= clSetKernelArg(Kernel,3,sizeof(cl_int),(void*)&channels_);
-    ret |= clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&height_);
-    ret |= clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&width_);
-    ret |= clSetKernelArg(Kernel,6,sizeof(cl_int),(void*)&pooled_height_);
-    ret |= clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&pooled_width_);
-    ret |= clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&kernel_size_);
-    ret |= clSetKernelArg(Kernel,9,sizeof(cl_int),(void*)&stride_);
-    ret |= clSetKernelArg(Kernel,10,sizeof(cl_int),(void*)&pad_);
-    ret |= clSetKernelArg(Kernel,11,sizeof(cl_mem),(void*)&top_data);
-    OCL_CHECK(ret);
-
-    size_t uiGlobal_Work_Size[]={count * 1};
-    size_t uiLocal_Work_Size[]={256};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL));
-    clReleaseKernel(Kernel);
-
+    ave_pool_fp_gpu(AvePoolForward_kernel, count, bottom_data, clnum, channels_, height_,width_, pooled_height_, pooled_width_, kernel_size_, stride_, pad_, top_data);
 #ifdef Track_layer
     LOG(WARNING) << "Avg pool fp done";
 #endif
@@ -133,6 +99,45 @@ Dtype PoolingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
+void PoolingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+  if (!propagate_down) {
+    return;
+  }
+  const Dtype* top_diff = top[0]->gpu_diff();
+  const Dtype* top_data = top[0]->gpu_data();
+  const Dtype* bottom_data = (*bottom)[0]->gpu_data();
+  Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
+  int count = (*bottom)[0]->count();
+  int clnum = top[0]->num();
+  // Different pooling methods. We explicitly do the switch outside the for
+  // loop to save time, although this results in more codes.
+  switch (this->layer_param_.pooling_param().pool()) {
+  case PoolingParameter_PoolMethod_MAX:{
+    max_pool_bp_gpu(MaxPoolBackward_kernel, count, bottom_data, top_data, top_diff, clnum, channels_, height_, width_, pooled_height_, pooled_width_, kernel_size_, stride_, bottom_diff );
+#ifdef Track_layer
+    LOG(WARNING) << "Max pool bp done";
+#endif
+    break;
+  }
+  case PoolingParameter_PoolMethod_AVE:{
+    ave_pool_bp_gpu(AvePoolBackward_kernel, count, top_diff, clnum, channels_, height_, width_, pooled_height_, pooled_width_, kernel_size_, stride_, pad_, bottom_diff);
+#ifdef Track_layer
+    LOG(WARNING) << "AVE pool bp done";
+#endif
+
+    break;
+  }
+  case PoolingParameter_PoolMethod_STOCHASTIC:
+    NOT_IMPLEMENTED;
+    break;
+  default:
+    LOG(FATAL) << "Unknown pooling method.";
+  }
+}
+
+
+template <typename Dtype>
 Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
   const Dtype* bottom_data = bottom[0]->cpu_data();
@@ -145,7 +150,7 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     // Initialize
     for (int i = 0; i < top_count; ++i) {
       top_data[i] = -FLT_MAX;
-    }
+    }   
     // The main loop
     for (int n = 0; n < bottom[0]->num(); ++n) {
       for (int c = 0; c < channels_; ++c) {
@@ -160,20 +165,20 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                 top_data[ph * pooled_width_ + pw] =
                   max(top_data[ph * pooled_width_ + pw],
                       bottom_data[h * width_ + w]);
-              }
-            }
-          }
-        }
+              }   
+            }   
+          }   
+        }   
         // compute offset
-        bottom_data += bottom[0]->offset(0, 1);
-        top_data += (*top)[0]->offset(0, 1);
-      }
-    }
+        bottom_data += bottom[0]->offset(0, 1); 
+        top_data += (*top)[0]->offset(0, 1); 
+      }   
+    }   
     break;
-  case PoolingParameter_PoolMethod_AVE:
+ case PoolingParameter_PoolMethod_AVE:
     for (int i = 0; i < top_count; ++i) {
       top_data[i] = 0;
-    }
+    }   
     // The main loop
     for (int n = 0; n < bottom[0]->num(); ++n) {
       for (int c = 0; c < channels_; ++c) {
@@ -192,6 +197,7 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
               for (int w = wstart; w < wend; ++w) {
                 top_data[ph * pooled_width_ + pw] +=
                     bottom_data[h * width_ + w];
+      bottom_data[h * width_ + w];
               }
             }
             top_data[ph * pooled_width_ + pw] /= pool_size;
@@ -210,100 +216,6 @@ Dtype PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     LOG(FATAL) << "Unknown pooling method.";
   }
   return Dtype(0.);
-}
-
-
-template <typename Dtype>
-void PoolingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
-      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
-  if (!propagate_down) {
-    return;
-  }
-  const Dtype* top_diff = top[0]->gpu_diff();
-  const Dtype* top_data = top[0]->gpu_data();
-  const Dtype* bottom_data = (*bottom)[0]->gpu_data();
-  Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
-  int count = (*bottom)[0]->count();
-  // Different pooling methods. We explicitly do the switch outside the for
-  // loop to save time, although this results in more codes.
-  switch (this->layer_param_.pooling_param().pool()) {
-  case PoolingParameter_PoolMethod_MAX:{
-    //max_pool_bp();
-    // The main loop
-    cl_int _err=0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"MaxPoolBackwardfloat",&_err);
-    if(NULL == Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n",_err);
-    }
-    int clnum = top[0]->num();
-
-    cl_int ret;
-    ret=clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&count);
-    ret|=clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&bottom_data);
-    ret|=clSetKernelArg(Kernel,2,sizeof(cl_mem),(void*)&top_data);
-    ret|=clSetKernelArg(Kernel,3,sizeof(cl_mem),(void*)&top_diff);
-    ret|=clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&clnum);
-    ret|=clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&channels_);
-    ret|=clSetKernelArg(Kernel,6,sizeof(cl_int),(void*)&height_);
-    ret|=clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&width_);
-    ret|=clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&pooled_height_);
-    ret|=clSetKernelArg(Kernel,9,sizeof(cl_int),(void*)&pooled_width_);
-    ret|=clSetKernelArg(Kernel,10,sizeof(cl_int),(void*)&kernel_size_);
-    ret|=clSetKernelArg(Kernel,11,sizeof(cl_int),(void*)&stride_);
-    ret|=clSetKernelArg(Kernel,12,sizeof(cl_mem),(void*)&bottom_diff);
-    OCL_CHECK(ret);
-
-    size_t uiGlobal_Work_Size[]={count};
-    size_t uiLocal_Work_Size[]={64};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL));
-    clReleaseKernel(Kernel);
-
-#ifdef Track_layer
-    LOG(WARNING) << "Max pool bp done";
-#endif
-    break;
-  }
-  case PoolingParameter_PoolMethod_AVE:{
-    
-    //max_pool_bp();
-    cl_int _err=0;
-    cl_kernel Kernel = clCreateKernel(amdDevice.Program,"AvePoolBackwardfloat",&_err);
-    if(NULL == Kernel){
-        fprintf(stderr,"Failed to create kernel %d\n",_err);
-    }
-    int clnum = top[0]->num();
-
-    cl_int ret;
-    ret = clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&count);
-    ret |= clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&top_diff);
-    ret |= clSetKernelArg(Kernel,2,sizeof(cl_int),(void*)&clnum);
-    ret |= clSetKernelArg(Kernel,3,sizeof(cl_int),(void*)&channels_);
-    ret |= clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&height_);
-    ret |= clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&width_);
-    ret |= clSetKernelArg(Kernel,6,sizeof(cl_int),(void*)&pooled_height_);
-    ret |= clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&pooled_width_);
-    ret |= clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&kernel_size_);
-    ret |= clSetKernelArg(Kernel,9,sizeof(cl_int),(void*)&stride_);
-    ret |= clSetKernelArg(Kernel,10,sizeof(cl_int),(void*)&pad_);
-    ret |= clSetKernelArg(Kernel,11,sizeof(cl_mem),(void*)&bottom_diff);
-    OCL_CHECK(ret);
-
-    size_t uiGlobal_Work_Size[]={count};
-    size_t uiLocal_Work_Size[]={64};
-    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue,Kernel,1,NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,NULL));
-    clReleaseKernel(Kernel);
-#ifdef Track_layer
-    LOG(WARNING) << "AVE pool bp done";
-#endif
-
-    break;
-  }
-  case PoolingParameter_PoolMethod_STOCHASTIC:
-    NOT_IMPLEMENTED;
-    break;
-  default:
-    LOG(FATAL) << "Unknown pooling method.";
-  }
 }
 
 template <typename Dtype>
@@ -348,7 +260,7 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       }
     }
     break;
-  case PoolingParameter_PoolMethod_AVE:
+ case PoolingParameter_PoolMethod_AVE:
     // The main loop
     for (int n = 0; n < top[0]->num(); ++n) {
       for (int c = 0; c < channels_; ++c) {
@@ -364,7 +276,7 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
             hend = min(hend, height_);
             wend = min(wend, width_);
             for (int h = hstart; h < hend; ++h) {
-              for (int w = wstart; w < wend; ++w) {
+for (int w = wstart; w < wend; ++w) {
                 bottom_diff[h * width_ + w] +=
                   top_diff[ph * pooled_width_ + pw] / pool_size;
               }
@@ -386,7 +298,6 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     LOG(FATAL) << "Unknown pooling method.";
   }
 }
-
 
 
 INSTANTIATE_CLASS(PoolingLayer);
