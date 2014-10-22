@@ -27,8 +27,23 @@ void SoftmaxLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     multiplier_data[i] = 1.;
   }
   scale_.Reshape(bottom[0]->num(), 1, 1, 1);
+  ocl_setup();
 }
 
+template <typename Dtype>
+void SoftmaxLayer<Dtype>::ocl_setup(){
+  cl_int err = 0;
+  get_max_kernel = clCreateKernel(amdDevice.Program, "get_max_float", &err);
+  exp_kernel = clCreateKernel(amdDevice.Program, "exp_float", &err);
+  softmax_div_kernel = clCreateKernel(amdDevice.Program, "softmax_div_float", &err);
+}
+
+template <typename Dtype>
+SoftmaxLayer<Dtype>::~SoftmaxLayer(){
+ clReleaseKernel(get_max_kernel);
+ clReleaseKernel(exp_kernel);
+ clReleaseKernel(softmax_div_kernel);
+}
 template <typename Dtype>
 Dtype SoftmaxLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
@@ -41,15 +56,15 @@ Dtype SoftmaxLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   
   // we need to subtract the max to avoid numerical issues, compute the exp,
   // and then normalize.
-  get_max_gpu<Dtype>(num, dim, bottom_data, scale_data);
+  get_max_gpu<Dtype>(get_max_kernel, num, dim, bottom_data, scale_data);
   // subtraction
   caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num, dim, 1, -1., scale_data, sum_multiplier_.gpu_data(), 1., top_data);
   // Perform exponentiation
-  exp_gpu<Dtype>(num*dim, top_data, top_data);
+  exp_gpu<Dtype>(exp_kernel, num*dim, top_data, top_data);
   // sum after exp
   caffe_gpu_gemvv<Dtype>(CblasNoTrans, num, dim, (Dtype)1., top_data, (size_t)0, dim, reinterpret_cast<const Dtype*>(sum_multiplier_.gpu_data()), (size_t)0, (Dtype)0., 1, scale_data, (size_t)0, 1); 
   // Do division
-  softmax_div_gpu<Dtype>(num, dim, scale_data, top_data);
+  softmax_div_gpu<Dtype>(softmax_div_kernel, num, dim, scale_data, top_data);
 
 #ifdef Track_layer
   LOG(WARNING) << "softmax layer fp done";

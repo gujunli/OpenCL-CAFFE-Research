@@ -6,19 +6,19 @@
 namespace caffe {
 
 template <typename Dtype>
-void get_max_gpu(const int num, const int dim, const Dtype* bottom_data, Dtype* scale_data);
+void get_max_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* bottom_data, Dtype* scale_data);
 
 template <typename Dtype>
-void exp_gpu(const int num, const Dtype* data, Dtype* out);
+void exp_gpu(cl_kernel Kernel, const int num, const Dtype* data, Dtype* out);
 
 template <typename Dtype>
-void softmax_div_gpu(const int num, const int dim, const Dtype* scale, Dtype* data);
+void softmax_div_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* scale, Dtype* data);
 
 template <typename Dtype>
-void scal_gpu(const int num, const Dtype alpha, Dtype* data);
+void scal_gpu(cl_kernel Kernel, const int num, const Dtype alpha, Dtype* data);
 
 template <typename Dtype>
-void diff_gpu(const int num, const int dim, Dtype* data, const Dtype* label);
+void diff_gpu(cl_kernel Kernel, const int num, const int dim, Dtype* data, const Dtype* label);
 
 template <typename Dtype>
 void max_pool_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, const int clnum, const int channels_, const int height_, const int width_, const int pooled_height_, const int pooled_width_, const int kernel_size_, const int stride_, Dtype* top_data);

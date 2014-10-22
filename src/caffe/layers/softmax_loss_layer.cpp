@@ -22,7 +22,22 @@ void SoftmaxWithLossLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   softmax_bottom_vec_.push_back(bottom[0]);
   softmax_top_vec_.push_back(&prob_);
   softmax_layer_->SetUp(softmax_bottom_vec_, &softmax_top_vec_);
+  ocl_setup();
 }
+
+template <typename Dtype>
+void SoftmaxWithLossLayer<Dtype>::ocl_setup(){
+   cl_int err=0;
+   scal_kernel = clCreateKernel(amdDevice.Program, "scal_float", &err);
+   diff_kernel = clCreateKernel(amdDevice.Program, "diff_float", &err);
+}
+
+template <typename Dtype>
+SoftmaxWithLossLayer<Dtype>::~SoftmaxWithLossLayer(){
+  clReleaseKernel(diff_kernel);
+  clReleaseKernel(scal_kernel); 
+} 
+
 
 template <typename Dtype>
 Dtype SoftmaxWithLossLayer<Dtype>::Forward_cpu(
@@ -66,8 +81,8 @@ void SoftmaxWithLossLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   const Dtype* label = (*bottom)[1]->gpu_data();
   int num = prob_.num();
   int dim = prob_.count() / num;
-  diff_gpu(num, dim, bottom_diff, label);
-  scal_gpu(prob_.count(), Dtype(1) / num, bottom_diff);
+  diff_gpu(diff_kernel, num, dim, bottom_diff, label);
+  scal_gpu(scal_kernel, prob_.count(), Dtype(1) / num, bottom_diff);
 #ifdef Track_layer
   LOG(WARNING) << "softmax with loss bp done";
 #endif 

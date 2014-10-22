@@ -347,6 +347,7 @@ class SoftmaxLayer : public Layer<Dtype> {
  public:
   explicit SoftmaxLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
+  ~SoftmaxLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -359,11 +360,14 @@ class SoftmaxLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup();
 
   // sum_multiplier is just used to carry out sum using blas
   Blob<Dtype> sum_multiplier_;
   // scale is an intermediate blob to hold temporary results.
   Blob<Dtype> scale_;
+ protected:
+  cl_kernel get_max_kernel, exp_kernel, softmax_div_kernel;
 };
 
 /* SoftmaxWithLossLayer
@@ -381,7 +385,7 @@ class SoftmaxWithLossLayer : public Layer<Dtype> {
       : Layer<Dtype>(param), softmax_layer_(new SoftmaxLayer<Dtype>(param)) {}
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
-
+   ~SoftmaxWithLossLayer();
  protected:
   virtual Dtype Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
@@ -391,6 +395,7 @@ class SoftmaxWithLossLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup();
 
   shared_ptr<SoftmaxLayer<Dtype> > softmax_layer_;
   // prob stores the output probability of the layer.
@@ -398,6 +403,8 @@ class SoftmaxWithLossLayer : public Layer<Dtype> {
   // Vector holders to call the underlying softmax layer forward and backward.
   vector<Blob<Dtype>*> softmax_bottom_vec_;
   vector<Blob<Dtype>*> softmax_top_vec_;
+ protected:
+   cl_kernel diff_kernel, scal_kernel; 
 };
 
 /* SplitLayer
