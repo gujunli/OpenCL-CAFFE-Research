@@ -25,26 +25,17 @@ void Im2colLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
       (height_ + 2 * pad_ - kernel_size_) / stride_ + 1,
       (width_ + 2 * pad_ - kernel_size_) / stride_ + 1);
    //OpenCL related initialization
-  ocl_setup(bottom[0]->offset(1)*sizeof(Dtype), (*top)[0]->offset(1)*sizeof(Dtype));
+  ocl_setup();
 }
 
 template <typename Dtype>
-void Im2colLayer<Dtype>::ocl_setup(const int bottom0_offset1, const int top0_offset1){
-    col_data = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)top0_offset1, NULL, NULL);
-    sub_bottom = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)bottom0_offset1, NULL, NULL);
-    sub_top_diff = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)bottom0_offset1, NULL, NULL);
-    sub_bottom_diff = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)top0_offset1, NULL, NULL);
-
+void Im2colLayer<Dtype>::ocl_setup(){
     im2col_kernel = clCreateKernel(amdDevice.Program,"im2colfloat", NULL);
     col2im_kernel = clCreateKernel(amdDevice.Program,"col2imfloat", NULL);
 }
 
 template <typename Dtype>
 Im2colLayer<Dtype>::~Im2colLayer(){
-  OCL_CHECK( clReleaseMemObject(col_data) );
-  OCL_CHECK( clReleaseMemObject(sub_bottom) );
-  OCL_CHECK( clReleaseMemObject(sub_top_diff) );
-  OCL_CHECK( clReleaseMemObject(sub_bottom_diff) );
   OCL_CHECK( clReleaseKernel(im2col_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_kernel) );
 }
@@ -78,10 +69,8 @@ Dtype Im2colLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   for (int n = 0; n < bottom[0]->num(); ++n) {
-   OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)sub_bottom, (size_t)(bottom[0]->offset(n)*sizeof(Dtype)), 0, bottom[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
-    im2col_gpu(im2col_kernel,sub_bottom, channels_, height_,
-        width_, kernel_size_, pad_, stride_, (Dtype*)col_data);
-    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)top_data, (size_t)((*top)[0]->offset(n)*sizeof(Dtype)), 0, (*top)[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
+    im2col_gpu(im2col_kernel, bottom_data, bottom[0]->offset(n),  channels_, height_,
+        width_, kernel_size_, pad_, stride_, (Dtype*)col_data, (*top)[0]->offset(n));
   }
   return Dtype(0.);
 }
@@ -92,10 +81,8 @@ void Im2colLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   const Dtype* top_diff = top[0]->gpu_diff();
   Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
   for (int n = 0; n < top[0]->num(); ++n) {
-    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff,  (cl_mem)sub_top_diff, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, top[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
-    col2im_gpu(col2im_kernel, sub_top_diff, channels_, height_, width_,
-        kernel_size_, pad_, stride_, (Dtype*)sub_bottom_diff);
-    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)sub_bottom_diff,  (cl_mem)bottom_diff, (size_t)((*bottom)[0]->offset(n)*sizeof(Dtype)), 0, (*bottom)[0]->offset(1)*sizeof(Dtype), 0, NULL, NULL));
+    col2im_gpu(col2im_kernel, top_diff, top[0]->offset(n), channels_, height_, width_,
+        kernel_size_, pad_, stride_, bottom_diff, (*bottom)[0]->offset(n));
   }
 }
 

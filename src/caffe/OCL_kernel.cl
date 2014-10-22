@@ -21,10 +21,11 @@ __kernel void OCL_memset2(__global int* buffer, const int value, const int size)
 }
 
 template <class T>
-__kernel void im2col(const int n,__global T* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_col){
+__kernel void im2col(const int n, __global T* data_im, const int img_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_col, const int col_offset){
     int index=get_global_id(0);
-    printf("im2col\n");
     int tmp=get_global_size(0);
+    data_im = data_im + img_offset;
+    data_col =  data_col + col_offset;
     for(index;index<n;index+=tmp){
         int w_out=index %width_col;
         index /= width_col;
@@ -49,13 +50,15 @@ __kernel void im2col(const int n,__global T* data_im, const int height, const in
     }
 }
 
-template __attribute__((mangled_name(im2colfloat))) __kernel void im2col(const int n,__global float* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_col); 
-template __attribute__((mangled_name(im2coldouble))) __kernel void im2col(const int n,__global double* data_im, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_col); 
+template __attribute__((mangled_name(im2colfloat))) __kernel void im2col(const int n, __global float* data_im, const int lmg_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_col, const int col_offset); 
+template __attribute__((mangled_name(im2coldouble))) __kernel void im2col(const int n, __global double* data_im, const int img_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_col, const int col_offset); 
 
 template <class T>
-__kernel void col2im(const int n,__global T* data_col, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_im){
+__kernel void col2im(const int n, __global T* data_col, const int col_offset, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_im, const int img_offset){
     int index = get_global_id(0);
     int tmp = get_global_size(0);
+    data_col = data_col + col_offset;
+    data_im = data_im + img_offset;
     for(index; index < n; index += tmp){
       T val = 0;
       int w = index % width + pad;
@@ -78,8 +81,8 @@ __kernel void col2im(const int n,__global T* data_col, const int height, const i
       data_im[index] = val;
   }
 }
-template __attribute__((mangled_name(col2imfloat))) __kernel void col2im(const int n,__global float* data_col, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_im); 
-template __attribute__((mangled_name(col2imdouble))) __kernel void col2im(const int n,__global double* data_col, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_im); 
+template __attribute__((mangled_name(col2imfloat))) __kernel void col2im(const int n, __global float* data_col, const int col_offset, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_im, const int img_offset); 
+template __attribute__((mangled_name(col2imdouble))) __kernel void col2im(const int n, __global double* data_col, const int col_offset, const int height, const int width, const int channels, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_im, const int img_offset); 
 
 
 

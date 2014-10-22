@@ -156,7 +156,7 @@ class Im2colLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
-  void ocl_setup(const int, const int);
+  void ocl_setup();
 
   int kernel_size_;
   int stride_;
