@@ -13,6 +13,19 @@ namespace caffe {
 template <typename Dtype>
 void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
      const int top0_offset1) {
+
+  //create OpenCL related cl_mem objects and kernels
+  int weight_offset = M_ * K_;
+  int col_offset = K_ * N_;
+  int top_offset = M_ * N_;
+  sub_top = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top_offset*sizeof(Dtype)), NULL, NULL);
+  sub_weight = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(weight_offset*sizeof(Dtype)), NULL, NULL);
+  sub_bottom = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(bottom0_offset1)*sizeof(Dtype), NULL, NULL);
+  sub_im2col = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(col_offset)*sizeof(Dtype), NULL, NULL);
+  sub_top_diff = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top0_offset1*sizeof(Dtype)), NULL, NULL);
+  sub_col2im = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((bottom0_offset1)*sizeof(Dtype)), NULL, NULL);
+
+
   im2col_kernel = clCreateKernel(amdDevice.Program,"im2colfloat", NULL);
   col2im_kernel = clCreateKernel(amdDevice.Program,"col2imfloat", NULL);
   //CHECK_EQ(col2im_kernel, NULL) << "failed to create col2im_kernel";
@@ -22,8 +35,14 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 
 template <typename Dtype>
  ConvolutionLayer<Dtype>::~ConvolutionLayer(){
- 
 //if(Caffe::mode() == Caffe::GPU){
+  OCL_CHECK( clReleaseMemObject(sub_top) );
+  OCL_CHECK( clReleaseMemObject(sub_weight) );
+  OCL_CHECK( clReleaseMemObject(sub_bottom) );
+  OCL_CHECK( clReleaseMemObject(sub_im2col) );
+  OCL_CHECK( clReleaseMemObject(sub_top_diff) );
+  OCL_CHECK( clReleaseMemObject(sub_col2im) );
+
   OCL_CHECK( clReleaseKernel(im2col_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_kernel) );
   //}
@@ -117,6 +136,9 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     // First, im2col
     im2col_gpu(im2col_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
                        width_, kernel_size_, pad_, stride_, col_data, 0);
+ 
+//the following calls sgemmEx
+#ifdef use_sgemm_ex
     for (int g = 0; g < group_; ++g) {
       caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
         (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
@@ -130,6 +152,29 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
           reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), 0,
           (Dtype)1., top_data, (*top)[0]->offset(n));
     }
+#else
+//the following calls sgemm + CopyBuffer
+   //the code does not work correctly when group!=1
+     for (int g = 0; g < group_; ++g) {
+      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)sub_im2col, (size_t)(col_offset * g * sizeof(Dtype)), 0, col_offset *sizeof(Dtype), 0, NULL, NULL));
+
+      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)weight, (cl_mem)sub_weight, (size_t)(weight_offset * g * sizeof(Dtype)), 0, weight_offset * sizeof(Dtype), 0, NULL, NULL));
+
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
+        (Dtype)1., (Dtype*)sub_weight, (Dtype*)sub_im2col,
+        (Dtype)0., (Dtype*)sub_top);
+    }
+
+    // third, add bias
+    if (bias_term_) {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
+          N_, 1, (Dtype)1., this->blobs_[1]->gpu_data(),
+          reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()),
+          (Dtype)1., (Dtype*)sub_top);
+    }
+    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)sub_top, (cl_mem)top_data, 0, (size_t)((*top)[0]->offset(n) * sizeof(Dtype)), ((*top)[0]->count()/num_)*sizeof(Dtype), 0, NULL, NULL));
+#endif
+
   }
 #ifdef Track_layer
   LOG(WARNING) << "conv fp done";
@@ -201,7 +246,9 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     // we will need to recompute them.
     im2col_gpu(im2col_kernel, bottom_data, (*bottom)[0]->offset(n), channels_, height_,
                       width_, kernel_size_, pad_, stride_, col_data, 0);
-   
+
+//The following calls sgemmEx
+#ifdef use_sgemm_ex 
     // gradient w.r.t. weight. Note that we will accumulate diffs.
     for (int g = 0; g < group_; ++g) {
       caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
@@ -217,13 +264,33 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
           top_diff, top[0]->offset(n) + top_offset * g,
           (Dtype)0., col_diff, col_offset * g);
       }
-    
+    }
+#else
+//the following calls sgemm + CopyBuffer
+   OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff, sub_top_diff, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, (top[0]->offset(1)*sizeof(Dtype)), 0, NULL, NULL));
+   //the code does not work correctly when group!=1
+   // gradient w.r.t. weight. Note that we will accumulate diffs.
+    for (int g = 0; g < group_; ++g) {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
+        (Dtype)1., (Dtype*)sub_top_diff,
+        (Dtype*)col_data, (Dtype)1.,
+        (Dtype*)weight_diff);
+    }
+
+   if (propagate_down) {
+      for (int g = 0; g < group_; ++g) {
+        caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_,
+          (Dtype)1., weight,
+          (Dtype*)sub_top_diff,
+          (Dtype)0., col_diff);
+      }
+    }
+#endif
       // col2im back to the data
       col2im_gpu(col2im_kernel, col_diff, 0, channels_, height_, width_, kernel_size_, pad_,
           stride_, bottom_diff, (*bottom)[0]->offset(n));
     }
 
-  }
 #ifdef Track_layer
     LOG(WARNING) << "conv bp done";
 #endif
