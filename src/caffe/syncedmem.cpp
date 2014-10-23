@@ -16,8 +16,7 @@ SyncedMemory::~SyncedMemory() {
   }
 
   if (gpu_ptr_) {
-    //CUDA_CHECK(cudaFree(gpu_ptr_));
-    clReleaseMemObject((cl_mem)gpu_ptr_);
+    OCL_CHECK( clReleaseMemObject((cl_mem)gpu_ptr_) );
   }
 }
 

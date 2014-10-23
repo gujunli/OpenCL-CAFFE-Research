@@ -13,7 +13,7 @@ namespace caffe {
 template <typename Dtype>
 void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
      const int top0_offset1) {
-
+#ifdef use_sgemm_ex
   //create OpenCL related cl_mem objects and kernels
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
@@ -24,7 +24,7 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
   sub_im2col = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(col_offset)*sizeof(Dtype), NULL, NULL);
   sub_top_diff = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)(top0_offset1*sizeof(Dtype)), NULL, NULL);
   sub_col2im = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((bottom0_offset1)*sizeof(Dtype)), NULL, NULL);
-
+#endif
 
   im2col_kernel = clCreateKernel(amdDevice.Program,"im2colfloat", NULL);
   col2im_kernel = clCreateKernel(amdDevice.Program,"col2imfloat", NULL);
@@ -36,13 +36,14 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 template <typename Dtype>
  ConvolutionLayer<Dtype>::~ConvolutionLayer(){
 //if(Caffe::mode() == Caffe::GPU){
+#ifdef use_sgemm_ex
   OCL_CHECK( clReleaseMemObject(sub_top) );
   OCL_CHECK( clReleaseMemObject(sub_weight) );
   OCL_CHECK( clReleaseMemObject(sub_bottom) );
   OCL_CHECK( clReleaseMemObject(sub_im2col) );
   OCL_CHECK( clReleaseMemObject(sub_top_diff) );
   OCL_CHECK( clReleaseMemObject(sub_col2im) );
-
+#endif
   OCL_CHECK( clReleaseKernel(im2col_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_kernel) );
   //}

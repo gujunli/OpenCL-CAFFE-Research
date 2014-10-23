@@ -30,7 +30,7 @@ private:\
 
 #define Track_layer
 #define Track_data_transfer
-//#define use_sgemm_ex
+#define use_sgemm_ex
 
 #define OCL_CHECK(condition) \
   do { \
