@@ -17,6 +17,7 @@ SyncedMemory::~SyncedMemory() {
 
   if (gpu_ptr_) {
     OCL_CHECK( clReleaseMemObject((cl_mem)gpu_ptr_) );
+    LOG(WARNING) << "synced mem: release mem object";
   }
 }
 
@@ -56,6 +57,7 @@ inline void SyncedMemory::to_gpu() {
       fprintf(stderr,"Failed to create memory object 58\n");
       break;
     }
+    LOG(WARNING) << "to_gpu uninitialized: create clbuffer";
     ocl_memset(tmpMem, (int)0, (int)(size_/sizeof(int)));
 
     gpu_ptr_ = (void*)tmpMem; 
@@ -69,9 +71,10 @@ inline void SyncedMemory::to_gpu() {
       if(NULL == tmpMem){
         fprintf(stderr,"Failed to create memory object\n");
       }
+      LOG(WARNING) << "to_gpu gpu_ptr NULL: create clbuffer";
       gpu_ptr_ = (void*)tmpMem;
     }
-    OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
+    OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_FALSE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
 #ifdef Track_data_transfer
     LOG(WARNING) << "sync: data from CPU to GPU";

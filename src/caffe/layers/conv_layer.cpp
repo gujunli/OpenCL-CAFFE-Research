@@ -13,7 +13,7 @@ namespace caffe {
 template <typename Dtype>
 void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
      const int top0_offset1) {
-#ifdef use_sgemm_ex
+#ifndef use_sgemm_ex
   //create OpenCL related cl_mem objects and kernels
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
@@ -36,7 +36,7 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 template <typename Dtype>
  ConvolutionLayer<Dtype>::~ConvolutionLayer(){
 //if(Caffe::mode() == Caffe::GPU){
-#ifdef use_sgemm_ex
+#ifndef use_sgemm_ex
   OCL_CHECK( clReleaseMemObject(sub_top) );
   OCL_CHECK( clReleaseMemObject(sub_weight) );
   OCL_CHECK( clReleaseMemObject(sub_bottom) );
