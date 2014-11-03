@@ -11,13 +11,18 @@ namespace caffe {
 shared_ptr<Caffe> Caffe::singleton_;
 
 
-// curand seeding
+// seeding
 int64_t cluster_seedgen(void) {
+  //To fix: for now we use fixed seed to get same result each time
+  /*
   int64_t s, seed, pid;
   pid = getpid();
   s = time(NULL);
   seed = abs(((s * 181) * ((pid - 83) * 359)) % 104729);
   return seed;
+  */
+  LOG(WARNING) << "return fixed seed 37";
+  return 37;
 }
 
 
@@ -25,21 +30,33 @@ Caffe::Caffe()
     : mode_(Caffe::CPU), phase_(Caffe::TRAIN), cublas_handle_(NULL),
       curand_generator_(NULL),
       random_generator_() {
+
+    cl_int err;
+    err = clAmdBlasSetup();
+    if(err != CL_SUCCESS){
+        printf("clAmdBlasSetup() failed with %d\n", err);
+    }
+    //try to use a fixed seed
+    srand(37);
   // Try to create a cublas handler, and report an error if failed (but we will
   // keep the program running as one might just want to run CPU code).
+
+  
   if (cublasCreate(&cublas_handle_) != CUBLAS_STATUS_SUCCESS) {
     LOG(ERROR) << "Cannot create Cublas handle. Cublas won't be available.";
   }
   // Try to create a curand handler.
   if (curandCreateGenerator(&curand_generator_, CURAND_RNG_PSEUDO_DEFAULT)
       != CURAND_STATUS_SUCCESS ||
-      curandSetPseudoRandomGeneratorSeed(curand_generator_, cluster_seedgen())
+      curandSetPseudoRandomGeneratorSeed(curand_generator_,1234ULL)// cluster_seedgen())
       != CURAND_STATUS_SUCCESS) {
     LOG(ERROR) << "Cannot create Curand generator. Curand won't be available.";
   }
+ 
 }
 
 Caffe::~Caffe() {
+  clAmdBlasTeardown();
   if (cublas_handle_) CUBLAS_CHECK(cublasDestroy(cublas_handle_));
   if (curand_generator_) {
     CURAND_CHECK(curandDestroyGenerator(curand_generator_));
@@ -50,17 +67,22 @@ void Caffe::set_random_seed(const unsigned int seed) {
   // Curand seed
   // Yangqing's note: simply setting the generator seed does not seem to
   // work on the tesla K20s, so I wrote the ugly reset thing below.
+  LOG(WARNING) << "set_random_seed";
+ 
   if (Get().curand_generator_) {
     CURAND_CHECK(curandDestroyGenerator(curand_generator()));
     CURAND_CHECK(curandCreateGenerator(&Get().curand_generator_,
         CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(curand_generator(),
-        seed));
+       1234ULL));// seed));
   } else {
     LOG(ERROR) << "Curand not available. Skipping setting the curand seed.";
   }
   // RNG seed
+  LOG(WARNING) << "set up random seed" << seed;
   Get().random_generator_.reset(new RNG(seed));
+  LOG(WARNING) << "reset new seed" << seed;
+ 
 }
 
 void Caffe::SetDevice(const int device_id) {
@@ -77,8 +99,8 @@ void Caffe::SetDevice(const int device_id) {
   CUBLAS_CHECK(cublasCreate(&Get().cublas_handle_));
   CURAND_CHECK(curandCreateGenerator(&Get().curand_generator_,
       CURAND_RNG_PSEUDO_DEFAULT));
-  CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(Get().curand_generator_,
-      cluster_seedgen()));
+ CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(Get().curand_generator_,
+    1234ULL));    // cluster_seedgen()));
 }
 
 void Caffe::DeviceQuery() {

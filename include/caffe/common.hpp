@@ -7,7 +7,7 @@
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <curand.h>
-#include "caffe/clAmdBlas.h"
+#include <clAmdBlas.h>
 #include <driver_types.h>  // cuda driver types
 #include <glog/logging.h>
 #include "caffe/device.hpp"
@@ -126,8 +126,10 @@ class Caffe {
   // Getters for boost rng, curand, and cublas handles
   inline static RNG& rng_stream() {
     if (!Get().random_generator_) {
-      Get().random_generator_.reset(new RNG());
+      Get().random_generator_.reset(new RNG(37));
+      LOG(WARNING) << "rng_stream 0";
     }
+    LOG(WARNING) << "rng_stream";
     return *(Get().random_generator_);
   }
   inline static cublasHandle_t cublas_handle() { return Get().cublas_handle_; }

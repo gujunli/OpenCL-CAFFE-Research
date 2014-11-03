@@ -281,9 +281,10 @@ Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   // First, join the thread
   JoinPrefetchThread();
   // Copy the data
-  OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem) (*top)[0]->mutable_gpu_data(), CL_FALSE, 0, sizeof(Dtype)*prefetch_data_->count(), (void*) prefetch_data_->cpu_data(), 0, NULL, NULL) );
+  //Junli's Note, using CL_FALSE introduced error; started conv layer computation before data is copied in. This says that data copy in on the critical path. may have space to optimize prefetch performance.
+  OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem) (*top)[0]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_data_->count(), (void*) prefetch_data_->cpu_data(), 0, NULL, NULL) );
   if (output_labels_) {
-  OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_FALSE, 0, sizeof(Dtype) * prefetch_label_->count(), (void*) prefetch_label_->cpu_data(), 0, NULL, NULL));
+  OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype) * prefetch_label_->count(), (void*) prefetch_label_->cpu_data(), 0, NULL, NULL));
    }
 #ifdef Track_data_transfer
   LOG(WARNING) << "Transfer: a minibatch from CPU to GPU";

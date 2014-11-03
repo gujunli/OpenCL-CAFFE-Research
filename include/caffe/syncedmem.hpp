@@ -36,10 +36,14 @@ class SyncedMemory {
  public:
   SyncedMemory()
       : cpu_ptr_(NULL), gpu_ptr_(NULL), size_(0), head_(UNINITIALIZED),
-        own_cpu_data_(false) {}
+        own_cpu_data_(false) {
+      ocl_setup();
+  }
   explicit SyncedMemory(size_t size)
       : cpu_ptr_(NULL), gpu_ptr_(NULL), size_(size), head_(UNINITIALIZED),
-        own_cpu_data_(false) {}
+        own_cpu_data_(false) {
+      ocl_setup(); 
+  }
   ~SyncedMemory();
   const void* cpu_data();
   void set_cpu_data(void* data);
@@ -49,7 +53,10 @@ class SyncedMemory {
   enum SyncedHead { UNINITIALIZED, HEAD_AT_CPU, HEAD_AT_GPU, SYNCED };
   SyncedHead head() { return head_; }
   size_t size() { return size_; }
-
+ private:
+   void ocl_setup();
+ protected:
+   cl_kernel oclmem_kernel;
  private:
   void to_cpu();
   void to_gpu();

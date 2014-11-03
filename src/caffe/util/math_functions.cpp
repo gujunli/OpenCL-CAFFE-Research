@@ -10,6 +10,7 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
 static const clAmdBlasOrder order = clAmdBlasColumnMajor;
+#define pi 3.1415926
 
 namespace caffe {
 
@@ -24,7 +25,6 @@ void caffe_cpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
       ldb, beta, C, N);
 }
 
-
 template<>
 void caffe_cpu_gemm<double>(const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
@@ -35,7 +35,6 @@ void caffe_cpu_gemm<double>(const CBLAS_TRANSPOSE TransA,
   cblas_dgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
       ldb, beta, C, N);
 }
-
 
 template <>
 void caffe_gpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
@@ -223,8 +222,7 @@ void caffe_gpu_copy<float>(const int N, const float* X, float* Y) {
 
 template <>
 void caffe_gpu_copy<double>(const int N, const double* X, double* Y) {
-  //CUBLAS_CHECK(cublasDcopy(Caffe::cublas_handle(), N, X, 1, Y, 1));
-   AMDBLAS_CHECK( clAmdBlasDcopy( N, (cl_mem)X, 0,1, (cl_mem)Y, 0, 1, 1, &(amdDevice.CommandQueue), 0, NULL, NULL) );
+  AMDBLAS_CHECK( clAmdBlasDcopy( N, (cl_mem)X, 0,1, (cl_mem)Y, 0, 1, 1, &(amdDevice.CommandQueue), 0, NULL, NULL) );
 }
 
 template <>
@@ -380,6 +378,8 @@ void caffe_rng_uniform(const int n, const Dtype a, const Dtype b, Dtype* r) {
   for (int i = 0; i < n; ++i) {
     r[i] = variate_generator();
   }
+
+  LOG(INFO) << "caffe_rng_uniform";
 }
 
 template
@@ -399,9 +399,24 @@ void caffe_rng_gaussian(const int n, const Dtype a,
   boost::normal_distribution<Dtype> random_distribution(a, sigma);
   boost::variate_generator<caffe::rng_t*, boost::normal_distribution<Dtype> >
       variate_generator(caffe_rng(), random_distribution);
+      //variate_generator(37, random_distribution);
   for (int i = 0; i < n; ++i) {
     r[i] = variate_generator();
   }
+  LOG(INFO) << "caffe_rng_guassian";
+  /*
+  //srand(37);
+  for (int i = 0; i < n; ++i) {
+    float u1 = ((float)rand())/RAND_MAX;
+    float u2 = ((float)rand())/RAND_MAX;
+    float x = sqrt(-2*log(u1))*sin(2*pi*u2);
+    r[i] = a + sigma*x;
+  }
+   for(int i=0; i<5; i++)
+   {
+      LOG(INFO)<<a<<"\t"<<sigma << "   rrrr[" <<i <<"] =" << r[i] ; 
+   }
+*/
 }
 
 template
@@ -424,6 +439,7 @@ void caffe_rng_bernoulli(const int n, const Dtype p, int* r) {
   for (int i = 0; i < n; ++i) {
     r[i] = variate_generator();
   }
+  LOG(INFO) << "caffe_rng_bernoulli";
 }
 
 template
@@ -446,12 +462,16 @@ template <>
 void caffe_gpu_dot<float>(const int n, const float* x, const float* y,
     float* out) {
   CUBLAS_CHECK(cublasSdot(Caffe::cublas_handle(), n, x, 1, y, 1, out));
+  //need to pass in scratchBuff
+  //AMDBLAS_CHECK(clAmdBlasSdot(n, out, 0, x, 0, 1, y, 0, 1, scratch_buf, 1, &(amdDevice.CommandQueue), 0, NULL, NULL));
 }
 
 template <>
 void caffe_gpu_dot<double>(const int n, const double* x, const double* y,
     double * out) {
   CUBLAS_CHECK(cublasDdot(Caffe::cublas_handle(), n, x, 1, y, 1, out));
+  //need to pass in scratchBuff
+  //AMDBLAS_CHECK(clAmdBlasDdot(n, out, 0, x, 0, 1, y, 0, 1, scratch_buf, 1, &(amdDevice.CommandQueue), 0, NULL, NULL));
 }
 
 template <>

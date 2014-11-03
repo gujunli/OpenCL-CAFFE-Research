@@ -91,7 +91,7 @@ template void diff_gpu<double>(cl_kernel Kernel, const int num, const int dim, d
 
 template <typename Dtype>
 void max_pool_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, const int clnum, const int channels_, const int height_, const int width_, const int pooled_height_, const int pooled_width_, const int kernel_size_, const int stride_, Dtype* top_data){
-	cl_int ret;
+    cl_int ret;
     ret  = clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&count);
     ret |= clSetKernelArg(Kernel, 1, sizeof(cl_mem), (void*)&bottom_data);
     ret |= clSetKernelArg(Kernel, 2, sizeof(cl_int), (void*)&clnum);
@@ -178,7 +178,7 @@ void ave_pool_bp_gpu(cl_kernel Kernel, const int count, const Dtype* top_diff, c
     ret |= clSetKernelArg(Kernel, 8, sizeof(cl_int), (void*)&kernel_size_);
     ret |= clSetKernelArg(Kernel, 9, sizeof(cl_int), (void*)&stride_);
     ret |= clSetKernelArg(Kernel,10, sizeof(cl_int), (void*)&pad_);
-    ret |= clSetKernelArg(Kernel,11,sizeof(cl_mem),(void*)&bottom_diff);
+    ret |= clSetKernelArg(Kernel,11, sizeof(cl_mem), (void*)&bottom_diff);
     OCL_CHECK(ret);
 
     size_t uiGlobal_Work_Size[]={count};

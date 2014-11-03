@@ -17,8 +17,15 @@ SyncedMemory::~SyncedMemory() {
 
   if (gpu_ptr_) {
     OCL_CHECK( clReleaseMemObject((cl_mem)gpu_ptr_) );
-    LOG(WARNING) << "synced mem: release mem object";
+    //LOG(WARNING) << "releasing syncedmemory gpu_ptr";
   }
+
+  clReleaseKernel(oclmem_kernel);
+}
+
+void SyncedMemory::ocl_setup() {
+  cl_int err=0;
+  oclmem_kernel = clCreateKernel(amdDevice.Program, "OCL_memset2", &err);
 }
 
 inline void SyncedMemory::to_cpu() {
@@ -50,15 +57,14 @@ inline void SyncedMemory::to_cpu() {
 inline void SyncedMemory::to_gpu() {
   switch (head_) {
   case UNINITIALIZED:{
-    //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
     //To Do: implement OCL_CHECK_NULL
     cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
+    //LOG(WARNING) << "creating syncedmemory (tmpMem) gpu_ptr";
     if(NULL == tmpMem){
       fprintf(stderr,"Failed to create memory object 58\n");
       break;
     }
-    LOG(WARNING) << "to_gpu uninitialized: create clbuffer";
-    ocl_memset(tmpMem, (int)0, (int)(size_/sizeof(int)));
+    ocl_memset(oclmem_kernel, tmpMem, (int)0, (int)(size_/sizeof(int)));
 
     gpu_ptr_ = (void*)tmpMem; 
     head_ = HEAD_AT_GPU;
@@ -66,15 +72,14 @@ inline void SyncedMemory::to_gpu() {
   }
   case HEAD_AT_CPU:{
     if (gpu_ptr_ == NULL) {
-      //CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
       cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
+      //LOG(WARNING) << "creating syncedmemory (tmpMem) gpu_ptr";
       if(NULL == tmpMem){
         fprintf(stderr,"Failed to create memory object\n");
       }
-      LOG(WARNING) << "to_gpu gpu_ptr NULL: create clbuffer";
       gpu_ptr_ = (void*)tmpMem;
     }
-    OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_FALSE, 0, size_, cpu_ptr_, 0, NULL, NULL));
+    OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     head_ = SYNCED;
 #ifdef Track_data_transfer
     LOG(WARNING) << "sync: data from CPU to GPU";

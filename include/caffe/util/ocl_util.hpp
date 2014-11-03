@@ -6,9 +6,9 @@
 namespace caffe {
 
 template <typename Dtype>
-void ocl_memset(const Dtype* buffer, const Dtype value, const int count);
+void ocl_memset(cl_kernel Kernel, const Dtype* buffer, const Dtype value, const int count);
 
-void ocl_memset(const cl_mem buffer, const int value, const int count);
+void ocl_memset(cl_kernel Kernel, const cl_mem buffer, const int value, const int count);
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_OCL_UTIL_HPP_

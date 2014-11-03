@@ -4,9 +4,12 @@
 #include <string>
 #include <fstream>
 #include "caffe/common.hpp"
+namespace caffe {
+
 class Device{
 public:
     Device():NumPlatforms(0),uiNumDevices(0){}
+    ~Device();
     cl_uint NumPlatforms;
     char platformName[64];
     char openclVersion[64];
@@ -21,8 +24,13 @@ public:
      
     cl_int Init(); 
     cl_int ConvertToString(const char *pFileName,std::string &Str);
+    
 
 };
 extern char* buildOption;
 extern Device amdDevice;
-#endif
+
+}  // namespace caffe
+
+#endif //CAFFE_DEVICE_HPP
+

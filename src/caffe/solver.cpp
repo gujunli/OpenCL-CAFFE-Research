@@ -35,7 +35,10 @@ Solver<Dtype>::Solver(const string& param_file)
 template <typename Dtype>
 void Solver<Dtype>::Init(const SolverParameter& param) {
   param_ = param;
+  //Caffe::set_mode(Caffe::Brew(param_.solver_mode()));
+  //AMD device related initialization
   amdDevice.Init();
+
   if (param_.random_seed() >= 0) {
     Caffe::set_random_seed(param_.random_seed());
   }
@@ -73,9 +76,10 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // very long time (param_.test_interval() training iterations) to report that
   // there's not enough memory to run the test net and crash, etc.; and to gauge
   // the effect of the first training iterations.
-  if (param_.test_interval()) {
-    Test();
-  }
+ 
+ // if (param_.test_interval()) {
+   // Test();
+ // }
 
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.

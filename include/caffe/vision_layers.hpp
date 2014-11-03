@@ -90,6 +90,7 @@ class ConvolutionLayer : public Layer<Dtype> {
 //opencl related data structures
 protected:
   cl_kernel im2col_kernel, col2im_kernel;
+  cl_kernel oclmem_kernel;
   cl_mem sub_top, sub_weight, sub_bottom, sub_im2col;
   cl_mem sub_top_diff, sub_col2im;
 };

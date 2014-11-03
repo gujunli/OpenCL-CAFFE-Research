@@ -28,6 +28,7 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 
   im2col_kernel = clCreateKernel(amdDevice.Program,"im2colfloat", NULL);
   col2im_kernel = clCreateKernel(amdDevice.Program,"col2imfloat", NULL);
+  oclmem_kernel = clCreateKernel(amdDevice.Program, "oclmemfloat", NULL);
   //CHECK_EQ(col2im_kernel, NULL) << "failed to create col2im_kernel";
 
 }
@@ -35,7 +36,7 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 
 template <typename Dtype>
  ConvolutionLayer<Dtype>::~ConvolutionLayer(){
-//if(Caffe::mode() == Caffe::GPU){
+ //if(Caffe::mode() == Caffe::GPU){
 #ifndef use_sgemm_ex
   OCL_CHECK( clReleaseMemObject(sub_top) );
   OCL_CHECK( clReleaseMemObject(sub_weight) );
@@ -46,6 +47,7 @@ template <typename Dtype>
 #endif
   OCL_CHECK( clReleaseKernel(im2col_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_kernel) );
+  OCL_CHECK( clReleaseKernel(oclmem_kernel) );
   //}
 }
 
@@ -93,7 +95,10 @@ void ConvolutionLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 
     //initializa OpenCL kernels and cl_mem objects
    //if(Caffe::mode() == Caffe::GPU)
+     //{
       ocl_setup(bottom[0]->offset(1), (*top)[0]->offset(1));
+      //LOG(INFO) << "conv ocl_setup: uses GPU already set up";
+     //}
 
     // Intialize the weight
     this->blobs_[0].reset(new Blob<Dtype>(
@@ -229,7 +234,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 
   if (bias_term_) {
     bias_diff = this->blobs_[1]->mutable_gpu_diff();
-    ocl_memset(bias_diff, (Dtype)(0.), this->blobs_[1]->count());
+    ocl_memset(oclmem_kernel, bias_diff, (Dtype)(0.), this->blobs_[1]->count());
     for (int n = 0; n < num_; ++n) {
       caffe_gpu_gemvv<Dtype>(CblasNoTrans, M_, N_,
           (Dtype)1., top_diff, top[0]->offset(n), N_,
