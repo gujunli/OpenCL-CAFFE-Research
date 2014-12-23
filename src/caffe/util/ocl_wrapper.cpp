@@ -219,4 +219,69 @@ void Relu_bp_gpu(cl_kernel Kernel, const int count, const Dtype* top_diff, const
 
 template void Relu_bp_gpu<float>(cl_kernel Kernel, const int count, const float* top_diff, const float* bottom_data, float* bottom_diff);
 template void Relu_bp_gpu<double>(cl_kernel Kernel, const int count, const double* top_diff, const double* bottom_data, double* bottom_diff);
+
+
+template <typename Dtype>
+void caffe_gpu_div (cl_kernel Kernel, const int n, const Dtype* a, const Dtype* b, Dtype* y){
+    cl_int ret;
+    ret  = clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&n);
+    ret |= clSetKernelArg(Kernel, 1, sizeof(cl_mem), (void*)&a);
+    ret |= clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&b);
+    ret |= clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&y);
+    OCL_CHECK(ret);
+    size_t Global_Work_Size[] = {n};
+    size_t Local_Work_Size[] = {256};
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
+}
+
+template void caffe_gpu_div<float> (cl_kernel Kernel, const int n, const float* a, const float* b, float* y);
+template void caffe_gpu_div<double> (cl_kernel Kernel, const int n, const double* a, const double* b, double* y);
+
+template <typename Dtype>
+void caffe_gpu_add_scalar (cl_kernel Kernel, const int n, const Dtype alpha, Dtype* y){
+    cl_int ret;
+    ret  = clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&n);
+    ret |= clSetKernelArg(Kernel, 1, sizeof(Dtype), (void*)&alpha);
+    ret |= clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&y);
+    OCL_CHECK(ret);
+    size_t Global_Work_Size[] = {n};
+    size_t Local_Work_Size[] = {256};
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
+}
+
+template void caffe_gpu_add_scalar<float> (cl_kernel Kernel, const int n, const float alpha, float* y);
+template void caffe_gpu_add_scalar<double> (cl_kernel Kernel, const int n, const double alpha, double* y);
+
+template <typename Dtype>
+void caffe_gpu_mul (cl_kernel Kernel, const int n, const Dtype* a, const Dtype* b, Dtype* y){
+    cl_int ret;
+    ret  = clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&n);
+    ret |= clSetKernelArg(Kernel, 1, sizeof(cl_mem), (void*)&a);
+    ret |= clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&b);
+    ret |= clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&y);
+    OCL_CHECK(ret);
+    size_t Global_Work_Size[] = {n};
+    size_t Local_Work_Size[] = {256};
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
+}
+
+template void caffe_gpu_mul<float> (cl_kernel Kernel, const int n, const float* a, const float* b, float* y);
+template void caffe_gpu_mul<double> (cl_kernel Kernel, const int n, const double* a, const double* b, double* y);
+
+template <typename Dtype>
+void caffe_gpu_powx (cl_kernel Kernel, const int n, const Dtype* a, const Dtype alpha, Dtype* y){
+    cl_int ret;
+    ret  = clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&n);
+    ret |= clSetKernelArg(Kernel, 1, sizeof(cl_mem), (void*)&a);
+    ret |= clSetKernelArg(Kernel, 2, sizeof(Dtype), (void*)&alpha);
+    ret |= clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&y);
+    OCL_CHECK(ret);
+    size_t Global_Work_Size[] = {n};
+    size_t Local_Work_Size[] = {256};
+    OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
+}
+
+template void caffe_gpu_powx<float> (cl_kernel Kernel, const int n, const float* a, const float alpha, float* y);
+template void caffe_gpu_powx<double> (cl_kernel Kernel, const int n, const double* a, const double alpha, double* y);
+
 }  // namespace caffe

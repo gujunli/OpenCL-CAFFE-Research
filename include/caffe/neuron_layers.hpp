@@ -76,7 +76,9 @@ class DropoutLayer : public NeuronLayer<Dtype> {
       : NeuronLayer<Dtype>(param) {}
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
-
+  cl_mem MaskMem;
+  cl_kernel ocl_Kernel_Fwd;
+  cl_kernel ocl_Kernel_Bwd;
  protected:
   virtual Dtype Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
@@ -104,6 +106,7 @@ class PowerLayer : public NeuronLayer<Dtype> {
  public:
   explicit PowerLayer(const LayerParameter& param)
       : NeuronLayer<Dtype>(param) {}
+  virtual ~PowerLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -116,11 +119,15 @@ class PowerLayer : public NeuronLayer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup();
 
   Dtype power_;
   Dtype scale_;
   Dtype shift_;
   Dtype diff_scale_;
+ 
+ protected:
+ cl_kernel memset_kernel, scalar_kernel, div_kernel, mul_kernel, powx_kernel;
 };
 
 /* ReLULayer

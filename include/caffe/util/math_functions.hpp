@@ -88,6 +88,12 @@ template <typename Dtype>
 void caffe_gpu_add_scalar(const int N, const Dtype alpha, Dtype *X);
 
 template <typename Dtype>
+void caffe_add_scalar(cl_kernel kernel, const int N, const Dtype alpha, Dtype *X);
+
+template <typename Dtype>
+void caffe_gpu_add_scalar(cl_kernel kernel, const int N, const Dtype alpha, Dtype *X);
+
+template <typename Dtype>
 void caffe_scal(const int N, const Dtype alpha, Dtype *X);
 
 template <typename Dtype>
@@ -105,20 +111,34 @@ void caffe_sub(const int N, const Dtype* a, const Dtype* b, Dtype* y);
 template <typename Dtype>
 void caffe_mul(const int N, const Dtype* a, const Dtype* b, Dtype* y);
 
+//template <typename Dtype>
+//void caffe_gpu_mul(const int N, const Dtype* a, const Dtype* b, Dtype* y, Dtype* scratch_buf);
+//CUDA version, need to be deleted
 template <typename Dtype>
 void caffe_gpu_mul(const int N, const Dtype* a, const Dtype* b, Dtype* y);
 
 template <typename Dtype>
+void caffe_gpu_mul(cl_kernel Kernel, const int N, const Dtype* a, const Dtype* b, Dtype* y);
+
+template <typename Dtype>
 void caffe_div(const int N, const Dtype* a, const Dtype* b, Dtype* y);
 
+//CUDA version, need to be deleted
 template <typename Dtype>
 void caffe_gpu_div(const int N, const Dtype* a, const Dtype* b, Dtype* y);
 
 template <typename Dtype>
-void caffe_powx(const int n, const Dtype* a, const Dtype b, Dtype* y);
+void caffe_gpu_div(cl_kernel kernel, const int N, const Dtype* a, const Dtype* b, Dtype* y);
 
 template <typename Dtype>
+void caffe_powx(const int n, const Dtype* a, const Dtype b, Dtype* y);
+
+//CUDA version, need to be deleted
+template <typename Dtype>
 void caffe_gpu_powx(const int n, const Dtype* a, const Dtype b, Dtype* y);
+
+template <typename Dtype>
+void caffe_gpu_powx(cl_kernel Kernel, const int n, const Dtype* a, const Dtype b, Dtype* y);
 
 unsigned int caffe_rng_rand();
 

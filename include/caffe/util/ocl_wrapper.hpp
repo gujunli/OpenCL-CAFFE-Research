@@ -38,6 +38,9 @@ void Relu_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, Dt
 template <typename Dtype>
 void Relu_bp_gpu(cl_kernel Kernel, const int count, const Dtype* top_diff, const Dtype* bottom_data, Dtype* bottom_diff);
 
+template <typename Dtype>
+void caffe_gpu_div (cl_kernel Kernel, const int n, const Dtype* a, const Dtype* b, Dtype* y);
+
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_OCL_UTIL_HPP_

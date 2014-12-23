@@ -33,13 +33,13 @@ cl_int Device::Init(){
     platformName[nameLen] = 0;
     
     //Get OpenCL Information 
-    res = clGetPlatformInfo(PlatformIDs[0], CL_PLATFORM_VERSION, 64, openclVersion, &nameLen);
-    if(res != CL_SUCCESS) {
-        fprintf(stderr, "Err: Get OpenCL Info failed!\n", res);
-        return 0;
-    }
-    openclVersion[nameLen] = 0;
-    printf("%s %s\n", platformName, openclVersion);
+    //res = clGetPlatformInfo(PlatformIDs[0], CL_PLATFORM_VERSION, 64, openclVersion, &nameLen);
+    //if(res != CL_SUCCESS) {
+    //    fprintf(stderr, "Err: Get OpenCL Info failed!\n", res);
+    //    return 0;
+    //}
+    //openclVersion[nameLen] = 0;
+    //printf("%s %s\n", platformName, openclVersion);
 
     //Get Device Information
     clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &uiNumDevices);

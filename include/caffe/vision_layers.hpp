@@ -102,6 +102,7 @@ class EltwiseProductLayer : public Layer<Dtype> {
  public:
   explicit EltwiseProductLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
+  virtual ~EltwiseProductLayer();
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
 
@@ -114,6 +115,13 @@ class EltwiseProductLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void ocl_setup(const int num);
+
+//opencl related data structures
+protected:
+  //cl_mem scratch_buf;
+  cl_kernel div_kernel; 
+  cl_kernel mul_kernel; 
 };
 
 template <typename Dtype>

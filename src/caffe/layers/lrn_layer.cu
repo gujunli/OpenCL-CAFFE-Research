@@ -55,6 +55,7 @@ __global__ void LRNFillScale(const int nthreads, const Dtype* in,
 }
 
 
+/*
 template <typename Dtype>
 Dtype LRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
@@ -68,6 +69,7 @@ Dtype LRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     return Dtype(0);
   }
 }
+*/
 
 // TODO: check if it would be faster to just put it into the previous kernel.
 template <typename Dtype>
@@ -101,7 +103,7 @@ Dtype LRNLayer<Dtype>::CrossChannelForward_gpu(
   return Dtype(0.);
 }
 
-
+/*
 template <typename Dtype>
 void LRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
@@ -116,6 +118,7 @@ void LRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     LOG(FATAL) << "Unknown normalization region.";
   }
 }
+*/
 
 template <typename Dtype>
 __global__ void LRNComputeDiff(const int nthreads, const Dtype* bottom_data,

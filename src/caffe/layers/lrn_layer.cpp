@@ -102,15 +102,36 @@ template <typename Dtype>
 Dtype LRNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
   switch (this->layer_param_.lrn_param().norm_region()) {
+    LOG(INFO) << "LRN fp cpu.";
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
+    LOG(INFO) << "LRN across Channel function.";
     return CrossChannelForward_cpu(bottom, top);
   case LRNParameter_NormRegion_WITHIN_CHANNEL:
+    LOG(INFO) << "LRN Within Channel function fp.";
     return WithinChannelForward(bottom, top);
   default:
     LOG(FATAL) << "Unknown normalization region.";
     return Dtype(0);
   }
 }
+
+template <typename Dtype>
+Dtype LRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+    vector<Blob<Dtype>*>* top) {
+  switch (this->layer_param_.lrn_param().norm_region()) {
+  case LRNParameter_NormRegion_ACROSS_CHANNELS:
+    LOG(INFO) << "Unported LRN Across Channel function.";
+    return Dtype(0);//need to be deleted
+    //return CrossChannelForward_gpu(bottom, top);
+  case LRNParameter_NormRegion_WITHIN_CHANNEL:
+    LOG(INFO) << "LRN Within Channel function.";
+    return WithinChannelForward(bottom, top);
+  default:
+    LOG(FATAL) << "Unknown normalization region.";
+    return Dtype(0);
+  }
+}
+
 
 template <typename Dtype>
 Dtype LRNLayer<Dtype>::CrossChannelForward_cpu(
@@ -176,11 +197,31 @@ template <typename Dtype>
 void LRNLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
   switch (this->layer_param_.lrn_param().norm_region()) {
+    LOG(INFO) << "LRN bp cpu.";
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
+    LOG(INFO) << "LRN across channel.";
     CrossChannelBackward_cpu(top, propagate_down, bottom);
     break;
   case LRNParameter_NormRegion_WITHIN_CHANNEL:
+    LOG(INFO) << "LRN within channel bp.";
     WithinChannelBackward(top, propagate_down, bottom);
+    break;
+  default:
+    LOG(FATAL) << "Unknown normalization region.";
+  }
+}
+
+template <typename Dtype>
+void LRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+    const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+  switch (this->layer_param_.lrn_param().norm_region()) {
+  case LRNParameter_NormRegion_ACROSS_CHANNELS:
+    //CrossChannelBackward_gpu(top, propagate_down, bottom);
+    LOG(INFO) << "Unported LRN Across Channel function.";
+    break;
+  case LRNParameter_NormRegion_WITHIN_CHANNEL:
+    WithinChannelBackward(top, propagate_down, bottom);
+    LOG(INFO) << "LRN Within Channel function.";
     break;
   default:
     LOG(FATAL) << "Unknown normalization region.";
