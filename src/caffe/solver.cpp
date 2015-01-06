@@ -77,9 +77,9 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // there's not enough memory to run the test net and crash, etc.; and to gauge
   // the effect of the first training iterations.
  
- // if (param_.test_interval()) {
-   // Test();
- // }
+  if (param_.test_interval()) {
+    Test();
+  }
 
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.

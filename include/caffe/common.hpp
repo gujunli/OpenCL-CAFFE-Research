@@ -28,8 +28,8 @@ private:\
 
 // OpenCL: various checks for different function calls.
 
-#define Track_layer
-#define Track_data_transfer
+//#define Track_layer
+//#define Track_data_transfer
 #define use_sgemm_ex
 
 #define OCL_CHECK(condition) \
@@ -126,10 +126,8 @@ class Caffe {
   // Getters for boost rng, curand, and cublas handles
   inline static RNG& rng_stream() {
     if (!Get().random_generator_) {
-      Get().random_generator_.reset(new RNG(37));
-      LOG(WARNING) << "rng_stream 0";
+      Get().random_generator_.reset(new RNG());
     }
-    LOG(WARNING) << "rng_stream";
     return *(Get().random_generator_);
   }
   inline static cublasHandle_t cublas_handle() { return Get().cublas_handle_; }

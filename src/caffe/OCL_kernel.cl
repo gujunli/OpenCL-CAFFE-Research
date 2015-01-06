@@ -1,5 +1,4 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
-
 template <class T>
 __kernel void OCL_memset(__global T* buffer, const T value, const int size){
         //printf("OCL_memset\n");
@@ -359,3 +358,27 @@ __kernel void powx (const int n, __global const T* a, const T alpha, __global T*
 
 template __attribute__ ((mangled_name(powx_float))) __kernel void powx (const int n, __global const float* a, const float alpha, __global float* y); 
 template __attribute__ ((mangled_name(powx_double))) __kernel void powx (const int n, __global const double* a, const double alpha, __global double* y); 
+
+template <class T>
+__kernel void DropoutForward(const int n, __global T *in, __global const int *mask, const int unsigned threshold, const float scale, __global T *out){
+    int index = get_global_id(0);
+    int tmp = get_global_size(0);
+    for(index; index < n; index+=tmp){
+        out[index] = in[index] * scale * mask[index];
+    }
+}
+template __attribute__((mangled_name(DropoutForwardfloat))) __kernel void DropoutForward(const int n, __global float* in,  __global const int* mask, const unsigned int threshold, const float scale, __global float* out); 
+template __attribute__((mangled_name(DropoutForwarddouble))) __kernel void DropoutForward(const int n, __global double* in, __global const int* mask, const unsigned int threshold, const float scale, __global double* out);
+
+
+template <class T>
+__kernel void DropoutBackward(const int n, __global T *in_diff, __global const int *mask, const int unsigned threshold, const float scale, __global T *out_diff){
+    int index = get_global_id(0);
+    int tmp = get_global_size(0);
+    for(index; index < n; index+=tmp){
+        out_diff[index] = in_diff[index] * scale * mask[index];
+    }
+}
+template __attribute__((mangled_name(DropoutBackwardfloat))) __kernel void DropoutBackward(const int n, __global float* in_diff,  __global const int* mask, const unsigned int threshold, const float scale, __global float* out_diff); 
+template __attribute__((mangled_name(DropoutBackwarddouble))) __kernel void DropoutBackward(const int n, __global double* in_diff, __global const int* mask, const unsigned int threshold, const float scale, __global double* out_diff);
+

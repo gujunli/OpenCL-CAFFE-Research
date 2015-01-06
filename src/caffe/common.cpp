@@ -31,26 +31,28 @@ Caffe::Caffe()
       curand_generator_(NULL),
       random_generator_() {
 
+    //For debugging: in order to have deterministic results, we use the same random seed for the gaussian filler
+    //need to be removed for real training
+    //srand(37);
+
     cl_int err;
     err = clAmdBlasSetup();
-    if(err != CL_SUCCESS){
-        printf("clAmdBlasSetup() failed with %d\n", err);
+    if (err != CL_SUCCESS) {
+       LOG(ERROR) << "clAmdBlasSetup() failed with " << err;
     }
-    //try to use a fixed seed
-    srand(37);
+    
+
   // Try to create a cublas handler, and report an error if failed (but we will
   // keep the program running as one might just want to run CPU code).
-
-  
   if (cublasCreate(&cublas_handle_) != CUBLAS_STATUS_SUCCESS) {
-    LOG(ERROR) << "Cannot create Cublas handle. Cublas won't be available.";
+    LOG(ERROR) << "NV Cublas won't be available.";
   }
   // Try to create a curand handler.
   if (curandCreateGenerator(&curand_generator_, CURAND_RNG_PSEUDO_DEFAULT)
       != CURAND_STATUS_SUCCESS ||
       curandSetPseudoRandomGeneratorSeed(curand_generator_,1234ULL)// cluster_seedgen())
       != CURAND_STATUS_SUCCESS) {
-    LOG(ERROR) << "Cannot create Curand generator. Curand won't be available.";
+      LOG(ERROR) << "NV Curand won't be available.";
   }
  
 }
