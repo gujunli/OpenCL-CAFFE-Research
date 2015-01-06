@@ -45,14 +45,14 @@ Caffe::Caffe()
   // Try to create a cublas handler, and report an error if failed (but we will
   // keep the program running as one might just want to run CPU code).
   if (cublasCreate(&cublas_handle_) != CUBLAS_STATUS_SUCCESS) {
-    LOG(ERROR) << "NV Cublas won't be available.";
+    LOG(INFO) << "NV Cublas won't be available.";
   }
   // Try to create a curand handler.
   if (curandCreateGenerator(&curand_generator_, CURAND_RNG_PSEUDO_DEFAULT)
       != CURAND_STATUS_SUCCESS ||
       curandSetPseudoRandomGeneratorSeed(curand_generator_,1234ULL)// cluster_seedgen())
       != CURAND_STATUS_SUCCESS) {
-      LOG(ERROR) << "NV Curand won't be available.";
+      LOG(INFO) << "NV Curand won't be available.";
   }
  
 }

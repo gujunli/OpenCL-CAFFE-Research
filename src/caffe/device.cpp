@@ -1,28 +1,33 @@
+#include "caffe/common.hpp"
 #include "caffe/device.hpp"
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
+#include <malloc.h>
 namespace caffe {
 
 Device amdDevice;
 char* buildOption = "-x clc++ ";
 
-
 Device::~Device(){
     //clAmdBlasTeardown(); 
+     free((void*)platformIDs);
+     free(DeviceIDs);
      clReleaseProgram(Program);
      clReleaseCommandQueue(CommandQueue);
      clReleaseContext(Context);
      LOG(INFO) << "device destructor";
 }
 
+
 cl_int Device::Init(){
-    // we use the same random seed for the gaussian filler
-    //srand(37);
+
     //Get Platform Infomation
-    clGetPlatformIDs(0, NULL, &NumPlatforms);
-    cl_platform_id PlatformIDs[NumPlatforms];
-    clGetPlatformIDs(NumPlatforms, PlatformIDs, NULL);
+    DisplayPlatformInfo();
+  
+    clGetPlatformIDs(0, NULL, &numPlatforms);
+    cl_platform_id PlatformIDs[numPlatforms];
+    clGetPlatformIDs(numPlatforms, PlatformIDs, NULL);
     
     size_t nameLen;
     cl_int res = clGetPlatformInfo(PlatformIDs[0], CL_PLATFORM_NAME, 64, platformName, &nameLen);
@@ -31,7 +36,7 @@ cl_int Device::Init(){
         return 0;
     }
     platformName[nameLen] = 0;
-    
+
     //Get OpenCL Information 
     //res = clGetPlatformInfo(PlatformIDs[0], CL_PLATFORM_VERSION, 64, openclVersion, &nameLen);
     //if(res != CL_SUCCESS) {
@@ -40,9 +45,13 @@ cl_int Device::Init(){
     //}
     //openclVersion[nameLen] = 0;
     //printf("%s %s\n", platformName, openclVersion);
-
+  
+    GetDeviceInfo();
+    
     //Get Device Information
-    clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &uiNumDevices);
+    clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
+    cl_uint uiNumDevices = numDevices;
+    cl_device_id * pDevices;
     if(0 == uiNumDevices){
         //clGetDeviceIDs(PlatformIDs[0],CL_DEVICE_TYPE_CPU,0,NULL,&uiNumDevices);
         if(0 == uiNumDevices){
@@ -134,8 +143,118 @@ cl_int Device::ConvertToString(const char *pFileName,std::string &Str){
         delete[] pStr;
         return 0;
     }
-    fprintf(stderr,"Err: Failed to open cl file!\n");
+    LOG(ERROR) << "Err: Failed to open cl file!";
     return -1;
+}
+
+void Device::DisplayPlatformInfo(){
+   cl_int err;
+   size_t size;
+
+   err = clGetPlatformIDs (0, NULL, &numPlatforms);
+   if(err != CL_SUCCESS || numPlatforms <=0)
+   {
+      LOG(ERROR) << "Failed to find any OpenCL platform.";
+      return;
+   }
+
+   platformIDs = (cl_platform_id *) malloc (sizeof(cl_platform_id) * numPlatforms);
+   err = clGetPlatformIDs (numPlatforms, platformIDs, NULL);
+   if(err != CL_SUCCESS)
+   {
+      LOG(ERROR) << "Failed to find any OpenCL platform.";
+      return;
+   }
+
+   LOG(INFO) << "Number of platforms found:" << numPlatforms;
+
+  //iterate through the list of platforms displaying platform information
+  for (cl_uint i = 0; i < numPlatforms; i++ ){
+  DisplayInfo(platformIDs[i], CL_PLATFORM_NAME, "CL_PLATFORM_NAME");
+  DisplayInfo(platformIDs[i], CL_PLATFORM_PROFILE, "CL_PLATFORM_PROFILE");
+  DisplayInfo(platformIDs[i], CL_PLATFORM_VERSION, "CL_PLATFORM_VERSION");
+  DisplayInfo(platformIDs[i], CL_PLATFORM_VENDOR, "CL_PLATFORM_VENDOR");
+  DisplayInfo(platformIDs[i], CL_PLATFORM_EXTENSIONS, "CL_PLATFORM_EXTENSIONS");
+  }
+   
+}
+
+void Device::DisplayInfo(cl_platform_id id, cl_platform_info name, std::string str){
+    cl_int err;
+    std::size_t paramValueSize;
+
+    err = clGetPlatformInfo(id, name, 0, NULL, &paramValueSize);  
+   if(err != CL_SUCCESS)
+   {
+      LOG(ERROR) << "Failed to find OpenCL platform:" << str;
+      return;
+   }
+   
+   char * info = (char *) alloca (sizeof(char) * paramValueSize);
+   err = clGetPlatformInfo(id, name, paramValueSize, info, NULL);
+   if(err != CL_SUCCESS)
+   {
+      LOG(ERROR) << "Failed to find OpenCL platform:" << str;
+      return;
+   }
+
+   LOG(INFO) << "\t" << str << "\t" << info;
+}
+
+void Device::GetDeviceInfo(){
+    cl_int err;
+    //by default, we select the first platform. can be extended for more platforms
+    //query GPU device for now
+    err = clGetDeviceIDs(platformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
+    // we allow program run if no GPU is found. Just return. No error reported.
+    if (numDevices < 1)
+    {
+      LOG(INFO) << "No GPU Devices found for platform" << platformIDs[0];
+      LOG(WARNING) << "No GPU Devices found for platform" << platformIDs[0];
+      return;
+    }
+    
+    DeviceIDs = (cl_device_id *) malloc (sizeof(cl_device_id) * numDevices);
+    err = clGetDeviceIDs(platformIDs[0], CL_DEVICE_TYPE_GPU, numDevices, DeviceIDs, NULL);
+    if(err != CL_SUCCESS)
+    {
+      LOG(INFO) << "Failed to find any GPU devices.";
+      return;
+    }
+
+    LOG(INFO) << "Number of devices found:" << numDevices;
+    for(cl_uint i = 0; i < numDevices; i++){
+    LOG(INFO) << "\t" << "DeviceID:" << DeviceIDs[i];
+    DisplayDeviceInfo<cl_uint>(DeviceIDs[i], CL_DEVICE_MAX_COMPUTE_UNITS, "Device has max compute units");
+    DisplayDeviceInfo<cl_command_queue_properties>(DeviceIDs[i], CL_DEVICE_QUEUE_PROPERTIES, "CL_DEVICE_QUEUE_PROPERTIES");
+    DisplayDeviceInfo<cl_device_exec_capabilities>(DeviceIDs[i], CL_DEVICE_EXECUTION_CAPABILITIES, "CL_DEVICE_EXECUTION_CAPABILITIES");
+    }
+    
+    
+}
+
+template <typename T>
+void Device::DisplayDeviceInfo(cl_device_id id, cl_device_info name, std::string str){
+    cl_int err;
+    std::size_t paramValueSize;
+
+    err = clGetDeviceInfo(id, name, 0, NULL, &paramValueSize);  
+   if(err != CL_SUCCESS)
+   {
+      LOG(ERROR) << "Failed to find OpenCL device info:" << str;
+      return;
+   }
+  
+   std::string content; 
+   T * info = (T *) alloca (sizeof(T) * paramValueSize);
+   err = clGetDeviceInfo(id, name, paramValueSize, info, NULL);
+   if(err != CL_SUCCESS)
+   {
+      LOG(ERROR) << "Failed to find OpenCL device info:" << str;
+      return;
+   }
+
+   LOG(INFO) << "\t" << str << "\t" << *info;
 }
 
 }  // namespace caffe

@@ -8,13 +8,14 @@ namespace caffe {
 
 class Device{
 public:
-    Device():NumPlatforms(0),uiNumDevices(0){}
+    Device():numPlatforms(0),numDevices(0){}
     ~Device();
-    cl_uint NumPlatforms;
+    cl_uint numPlatforms;
+    cl_platform_id * platformIDs;
     char platformName[64];
     char openclVersion[64];
-    cl_uint uiNumDevices;
-    cl_device_id *pDevices;
+    cl_uint numDevices;
+    cl_device_id * DeviceIDs;
     cl_context Context;
     cl_command_queue CommandQueue;
     cl_program Program; 
@@ -24,6 +25,13 @@ public:
      
     cl_int Init(); 
     cl_int ConvertToString(const char *pFileName,std::string &Str);
+    void DisplayPlatformInfo();
+    void DisplayInfo(cl_platform_id id, cl_platform_info name, std::string str);
+
+    void GetDeviceInfo();
+
+    template <typename T>
+    void DisplayDeviceInfo(cl_device_id id, cl_device_info name, std::string str);
     
 
 };
