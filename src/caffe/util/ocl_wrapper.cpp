@@ -196,7 +196,8 @@ void Relu_fp_gpu(cl_kernel Kernel, const int count, const Dtype* bottom_data, Dt
     ret |= clSetKernelArg(Kernel, 1, sizeof(cl_mem), (void*)&bottom_data);
     ret |= clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&top_data);
     OCL_CHECK(ret);
-    size_t Global_Work_Size[] = {count * 1};
+    //size_t Global_Work_Size[] = {( (count+ 255) / 256) * 256};
+    size_t Global_Work_Size[]={count};
     size_t Local_Work_Size[] = {256};
     OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
 }
@@ -212,7 +213,8 @@ void Relu_bp_gpu(cl_kernel Kernel, const int count, const Dtype* top_diff, const
     ret |= clSetKernelArg(Kernel, 2, sizeof(cl_mem), (void*)&bottom_data);
     ret |= clSetKernelArg(Kernel, 3, sizeof(cl_mem), (void*)&bottom_diff);
     OCL_CHECK(ret);
-    size_t Global_Work_Size[] = {count * 1};
+    //size_t Global_Work_Size[] = {( (count+ 255) / 256) * 256};
+    size_t Global_Work_Size[]={count};
     size_t Local_Work_Size[] = {256};
     OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
 }

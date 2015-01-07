@@ -1,7 +1,6 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 template <class T>
 __kernel void OCL_memset(__global T* buffer, const T value, const int size){
-        //printf("OCL_memset\n");
 	int gdx = get_global_id(0);
 	if(gdx < size){
 		buffer[gdx] = value;	
@@ -12,7 +11,6 @@ template __attribute__((mangled_name(oclmemfloat))) __kernel void OCL_memset(__g
 template __attribute__((mangled_name(oclmemdouble))) __kernel void OCL_memset(__global double* buffer, const double value, const int size);
 
 __kernel void OCL_memset2(__global int* buffer, const int value, const int size){
-        //printf("OCL_memset2\n");
         int gdx = get_global_id(0);
         if(gdx < size){
                 buffer[gdx] = value;    
@@ -57,8 +55,6 @@ __kernel void col2im(const int n, __global T* data_col, const int col_offset, co
     data_col = data_col + col_offset;
     data_im = data_im + img_offset;
     if(index < n){
-    //int tmp = get_global_size(0);
-    //for(index; index < n; index += tmp){
       T val = 0;
       int w = index % width + pad;
       int h = (index / width) % height + pad;
@@ -116,7 +112,6 @@ template __attribute__((mangled_name(MaxPoolForwarddouble))) __kernel void MaxPo
 template <class T>
 __kernel void AvePoolForward(const int nthreads, __global T* bottom_data, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, const int pad, __global T* top_data){
     int index=get_global_id(0);
-    //printf("avgpoolForward\n");
     int tmp=get_global_size(0);
     for(index;index<nthreads;index+=tmp){
         int pw = index % pooled_width;
@@ -152,7 +147,6 @@ const int num, const int channels, const int height,
 const int width, const int pooled_height, const int pooled_width,
 const int kernel_size, const int stride, __global T* bottom_diff){
     int index = get_global_id(0);
-    //printf("maxpoolBackward\n");
     int total = get_global_size(0);
     for(index; index < nthreads; index += total){
         // find out the local index
@@ -188,7 +182,6 @@ template __attribute__((mangled_name(MaxPoolBackwarddouble))) __kernel void MaxP
 template <class T>
 __kernel void AvePoolBackward(const int nthreads, __global T* top_diff, const int num, const int channels, const int height, const int width, const int pooled_height, const int pooled_width, const int kernel_size, const int stride, const int pad, __global T* bottom_diff){
      int index = get_global_id(0);
-     //printf("AvgpoolBackward\n");
      int total = get_global_size(0);
      for(index; index < nthreads; index += total){
 	    int w = index % width + pad;
@@ -223,9 +216,7 @@ template __attribute__((mangled_name(AvePoolBackwarddouble))) __kernel void AveP
 template <class T>
 __kernel void ReLUForward(const int count, __global T* in, __global T* out){
 	int index = get_global_id(0);
-        //printf("ReLuForward\n");
-	int total = get_global_size(0);
-	for(index; index < count; index += total)
+	if(index < count)
 		out[index] = in[index] > 0? in[index]:0;
 }
 
@@ -235,10 +226,8 @@ template __attribute__ ((mangled_name(ReLUForwarddouble))) __kernel void ReLUFor
 template <class T>
 __kernel void ReLUBackward(const int count, __global T* in_diff, __global T* in_data,__global T* out_diff){
 	int index = get_global_id(0);
-        //printf("ReLuBackward\n");
-	int total = get_global_size(0);
-	for(index; index < count; index += total)
-		out_diff[index] = in_diff[index] *(in_data[index] > 0);
+        if(index < count)
+		out_diff[index] = in_diff[index] * (in_data[index] > 0);
 }
 
 template __attribute__ ((mangled_name(ReLUBackwardfloat))) __kernel void ReLUBackward(const int count, __global float* in_diff, __global float* in_data, __global float* out_diff);
@@ -247,14 +236,12 @@ template __attribute__ ((mangled_name(ReLUBackwarddouble))) __kernel void ReLUBa
 template <class T>
 __kernel void get_max(const int num, const int dim, __global T* data, __global T* out){
      int index = get_global_id(0);
-     //printf("getMax\n");
-     int total = get_global_size(0);
-     for(index; index < num; index +=  total){
+     if (index < num) {
 	T maxval = -FLT_MAX;
         for (int i = 0; i <  dim; i++)
 	maxval = max( data[index*dim + i], maxval );
         out[index] = maxval;
-	}
+      }
 }
 
 template __attribute__ ((mangled_name(get_max_float))) __kernel void get_max(const int num, const int dim, __global float* data, __global float* out);
@@ -262,12 +249,9 @@ template __attribute__ ((mangled_name(get_max_double))) __kernel void get_max(co
 
 template <class T>
 __kernel void exp (const int num, __global T* data, __global T* out){
-        //printf("exp\n");
         int index = get_global_id(0);
-        int total = get_global_size(0);
-        for(index; index < num; index +=  total){
+        if (index < num) 
         out[index] = exp(data[index]);
-        }
 }
 
 template __attribute__ ((mangled_name(exp_float))) __kernel void exp (const int num, __global float* data, __global float* out);
@@ -291,7 +275,6 @@ template __attribute__ ((mangled_name(softmax_div_double))) __kernel void softma
 
 template <class T>
 __kernel void diff (const int num, const int dim, __global T* data, __global T* label){
-        //printf("diff\n");
         int index = get_global_id(0);
         int total = get_global_size(0);
         int offset;
@@ -306,7 +289,6 @@ template __attribute__ ((mangled_name(diff_double))) __kernel void diff (const i
 
 template <class T>
 __kernel void scal (const int num, const T alpha, __global T* data){
-        printf("scal\n");
         int index = get_global_id(0);
         int total = get_global_size(0);
         for(index; index < num; index +=  total){

@@ -221,7 +221,13 @@ const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilled(Dtype* loss) {
   }
   for (int i = 0; i < layers_.size(); ++i) {
     // LOG(ERROR) << "Forwarding " << layer_names_[i];
+    double begin_time = GettickCount();
     Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], &top_vecs_[i]);
+    printf("Blocking: \t");
+    clFinish(amdDevice.CommandQueue);
+    double end_time = GettickCount();
+    printf("Forwarding %s,\ttime %f ms\n", layer_names_[i].c_str(), end_time-begin_time);
+
     if (loss != NULL) {
       *loss += layer_loss;
     }
@@ -264,9 +270,15 @@ string Net<Dtype>::Forward(const string& input_blob_protos, Dtype* loss) {
 template <typename Dtype>
 void Net<Dtype>::Backward() {
   for (int i = layers_.size() - 1; i >= 0; --i) {
+    double begin_time = GettickCount();
     if (layer_need_backward_[i]) {
       layers_[i]->Backward(top_vecs_[i], true, &bottom_vecs_[i]);
     }
+
+   printf("Blocking: \t");
+   clFinish(amdDevice.CommandQueue);
+   double end_time = GettickCount();
+   printf("Backward %s,\ttime %f ms\n", layer_names_[i].c_str(), end_time-begin_time);
   }
 }
 

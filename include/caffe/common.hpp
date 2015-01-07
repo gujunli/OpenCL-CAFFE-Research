@@ -37,7 +37,7 @@ private:\
     cl_int error = condition; \
     CHECK_EQ(error, CL_SUCCESS) << " " << error; \
     if(CL_SUCCESS != error){ \
-       LOG(INFO) << "failed to enqueue kernel RELuForwardFloat ";\
+       LOG(INFO) << "failed";\
     } \
   } while (0)
 

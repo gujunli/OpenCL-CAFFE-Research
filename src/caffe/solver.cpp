@@ -85,10 +85,23 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // should be given, and we will just provide dummy vecs.
   vector<Blob<Dtype>*> bottom_vec;
   while (iter_++ < param_.max_iter()) {
+    double iter_begin = GettickCount();
     Dtype loss = net_->ForwardBackward(bottom_vec);
     Dtype avg_prob = exp(-loss); 
+
+    double begin_compute_update = GettickCount();
     ComputeUpdateValue();
+    printf("Blocking: \t");
+    clFinish(amdDevice.CommandQueue);
+    double end_compute_update = GettickCount(); 
+    printf("compute update,\ttime %f ms\n", end_compute_update-begin_compute_update);
+
     net_->Update();
+    printf("Blocking: \t");
+    clFinish(amdDevice.CommandQueue);
+    double end_update = GettickCount();
+    printf("update,        \ttime %f ms\n", end_update-end_compute_update);
+
 
     if (param_.display() && iter_ % param_.display() == 0) {
       LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss <<",  average prob = "<< avg_prob;
@@ -100,6 +113,8 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     if (param_.snapshot() && iter_ % param_.snapshot() == 0) {
       Snapshot();
     }
+    double iter_end = GettickCount();
+    printf("iteration %d finished,\ttime %f ms\n\n", iter_, iter_end-iter_begin);
   }
   // After the optimization is done, always do a snapshot.
   iter_--;
