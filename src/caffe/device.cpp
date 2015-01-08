@@ -224,10 +224,21 @@ void Device::GetDeviceInfo(){
 
     LOG(INFO) << "Number of devices found:" << numDevices;
     for(cl_uint i = 0; i < numDevices; i++){
-    LOG(INFO) << "\t" << "DeviceID:" << DeviceIDs[i];
-    DisplayDeviceInfo<cl_uint>(DeviceIDs[i], CL_DEVICE_MAX_COMPUTE_UNITS, "Device has max compute units");
+    LOG(INFO) << "\t" << "DeviceID" << ":\t" <<DeviceIDs[i];
+    DisplayDeviceInfo<cl_device_type>(DeviceIDs[i], CL_DEVICE_TYPE, "Device Type");
+    DisplayDeviceInfo<cl_uint>(DeviceIDs[i], CL_DEVICE_MAX_CLOCK_FREQUENCY, "Max clock frequency MHz");
+    DisplayDeviceInfo<cl_bool>(DeviceIDs[i], CL_DEVICE_HOST_UNIFIED_MEMORY, "Host-Device unified mem");
+    DisplayDeviceInfo<cl_bool>(DeviceIDs[i], CL_DEVICE_ERROR_CORRECTION_SUPPORT, "ECC support");
+    DisplayDeviceInfo<cl_bool>(DeviceIDs[i], CL_DEVICE_ENDIAN_LITTLE, "Endian little");
+    DisplayDeviceInfo<cl_uint>(DeviceIDs[i], CL_DEVICE_MAX_COMPUTE_UNITS, "Max compute units");
+    DisplayDeviceInfo<size_t>(DeviceIDs[i], CL_DEVICE_MAX_WORK_GROUP_SIZE, "Max work group size");
+    DisplayDeviceInfo<cl_uint>(DeviceIDs[i], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, "Max work item dimensions");
+    DisplayDeviceInfo<size_t *>(DeviceIDs[i], CL_DEVICE_MAX_WORK_ITEM_SIZES, "Max work item sizes");
     DisplayDeviceInfo<cl_command_queue_properties>(DeviceIDs[i], CL_DEVICE_QUEUE_PROPERTIES, "CL_DEVICE_QUEUE_PROPERTIES");
     DisplayDeviceInfo<cl_device_exec_capabilities>(DeviceIDs[i], CL_DEVICE_EXECUTION_CAPABILITIES, "CL_DEVICE_EXECUTION_CAPABILITIES");
+    DisplayDeviceInfo<cl_ulong>(DeviceIDs[i], CL_DEVICE_MAX_MEM_ALLOC_SIZE, "Max mem alloc size");
+    DisplayDeviceInfo<cl_ulong>(DeviceIDs[i], CL_DEVICE_GLOBAL_MEM_SIZE, "Global mem size");
+    DisplayDeviceInfo<cl_ulong>(DeviceIDs[i], CL_DEVICE_LOCAL_MEM_SIZE, "Local mem size");
     }
     
     
@@ -254,8 +265,70 @@ void Device::DisplayDeviceInfo(cl_device_id id, cl_device_info name, std::string
       return;
    }
 
-   LOG(INFO) << "\t" << str << "\t" << *info;
+
+   switch(name)
+{
+    case CL_DEVICE_TYPE:
+    {
+        std::string deviceType;
+        appendBitfield<cl_device_type>(
+        *(reinterpret_cast<cl_device_type*>(info)),CL_DEVICE_TYPE_CPU,"CL_DEVICE_TYPE_CPU",deviceType);
+
+        appendBitfield<cl_device_type>(
+        *(reinterpret_cast<cl_device_type*>(info)),CL_DEVICE_TYPE_GPU,"CL_DEVICE_TYPE_GPU",deviceType);
+
+        appendBitfield<cl_device_type>(
+        *(reinterpret_cast < cl_device_type*>(info)),CL_DEVICE_TYPE_ACCELERATOR,"CL_DEVICE_TYPE_ACCELERATOR",deviceType);
+
+        appendBitfield<cl_device_type>(
+        *(reinterpret_cast < cl_device_type*>(info)),CL_DEVICE_TYPE_DEFAULT,"CL_DEVICE_TYPE_DEFAULT",deviceType);
+        
+	LOG(INFO) << "\t " << str << ":\t" << deviceType;
+    }
+        break;
+    case CL_DEVICE_EXECUTION_CAPABILITIES:
+    {
+        std::string memType;
+        appendBitfield<cl_device_exec_capabilities>(
+        *(reinterpret_cast<cl_device_exec_capabilities*>(info)),CL_EXEC_KERNEL,"CL_EXEC_KERNEL",memType);
+
+        appendBitfield<cl_device_exec_capabilities>(
+        *(reinterpret_cast<cl_device_exec_capabilities*>(info)),CL_EXEC_NATIVE_KERNEL,"CL_EXEC_NATIVE_KERNEL",memType);
+
+        LOG(INFO) << "\t " << str << ":\t" << memType;
+
+    }
+       break;
+    case CL_DEVICE_QUEUE_PROPERTIES:
+        {
+            std::string memType;
+            appendBitfield<cl_device_exec_capabilities>(*(reinterpret_cast<cl_device_exec_capabilities*>(info)),CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,"CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE",memType);
+
+            appendBitfield<cl_device_exec_capabilities>(*(reinterpret_cast<cl_device_exec_capabilities*>(info)),CL_QUEUE_PROFILING_ENABLE,"CL_QUEUE_PROFILING_ENABLE",memType);
+
+            LOG(INFO) << "\t " << str << ":\t" << memType;
+        }
+        break;
+    default:
+        LOG(INFO) << "\t" << str << ":\t" << *info;
+        break;
 }
+
+}
+
+template<typename T>
+void Device::appendBitfield(T info, T value , std::string name , std::string &str)
+{
+    if(info & value)
+    {
+        if (str.length() > 0)
+        {
+            str.append(" | ");
+        }
+        str.append(name);
+    }
+}
+
 
 }  // namespace caffe
 

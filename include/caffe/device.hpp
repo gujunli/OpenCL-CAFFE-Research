@@ -32,6 +32,8 @@ public:
 
     template <typename T>
     void DisplayDeviceInfo(cl_device_id id, cl_device_info name, std::string str);
+    template <typename T>
+    void appendBitfield(T info, T value, std::string name, std::string &str);
     
 
 };
