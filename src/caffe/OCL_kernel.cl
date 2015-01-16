@@ -220,6 +220,7 @@ __kernel void ReLUForward(const int count, __global T* in, __global T* out){
 		out[index] = in[index] > 0? in[index]:0;
 }
 
+//template __attribute__ ((mangled_name(ReLUForwardfloat))) __kernel void ReLUForward(const int count, __global float4* in, __global float4* out);
 template __attribute__ ((mangled_name(ReLUForwardfloat))) __kernel void ReLUForward(const int count, __global float* in, __global float* out);
 template __attribute__ ((mangled_name(ReLUForwarddouble))) __kernel void ReLUForward(const int count, __global double* in, __global double* out);
 
@@ -342,25 +343,21 @@ template __attribute__ ((mangled_name(powx_float))) __kernel void powx (const in
 template __attribute__ ((mangled_name(powx_double))) __kernel void powx (const int n, __global const double* a, const double alpha, __global double* y); 
 
 template <class T>
-__kernel void DropoutForward(const int n, __global T *in, __global const int *mask, const int unsigned threshold, const float scale, __global T *out){
+__kernel void DropoutForward(const int n, __global T *in, __global const int *mask, const int unsigned threshold, const T scale, __global T *out){
     int index = get_global_id(0);
-    int tmp = get_global_size(0);
-    for(index; index < n; index+=tmp){
+    if (index < n)
         out[index] = in[index] * scale * mask[index];
-    }
 }
 template __attribute__((mangled_name(DropoutForwardfloat))) __kernel void DropoutForward(const int n, __global float* in,  __global const int* mask, const unsigned int threshold, const float scale, __global float* out); 
-template __attribute__((mangled_name(DropoutForwarddouble))) __kernel void DropoutForward(const int n, __global double* in, __global const int* mask, const unsigned int threshold, const float scale, __global double* out);
+template __attribute__((mangled_name(DropoutForwarddouble))) __kernel void DropoutForward(const int n, __global double* in, __global const int* mask, const unsigned int threshold, const double scale, __global double* out);
 
 
 template <class T>
-__kernel void DropoutBackward(const int n, __global T *in_diff, __global const int *mask, const int unsigned threshold, const float scale, __global T *out_diff){
+__kernel void DropoutBackward(const int n, __global T *in_diff, __global const int *mask, const int unsigned threshold, const T scale, __global T *out_diff){
     int index = get_global_id(0);
-    int tmp = get_global_size(0);
-    for(index; index < n; index+=tmp){
+    if (index < n)
         out_diff[index] = in_diff[index] * scale * mask[index];
-    }
 }
 template __attribute__((mangled_name(DropoutBackwardfloat))) __kernel void DropoutBackward(const int n, __global float* in_diff,  __global const int* mask, const unsigned int threshold, const float scale, __global float* out_diff); 
-template __attribute__((mangled_name(DropoutBackwarddouble))) __kernel void DropoutBackward(const int n, __global double* in_diff, __global const int* mask, const unsigned int threshold, const float scale, __global double* out_diff);
+template __attribute__((mangled_name(DropoutBackwarddouble))) __kernel void DropoutBackward(const int n, __global double* in_diff, __global const int* mask, const unsigned int threshold, const double scale, __global double* out_diff);
 

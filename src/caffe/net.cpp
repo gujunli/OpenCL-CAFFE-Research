@@ -278,7 +278,7 @@ void Net<Dtype>::Backward() {
    printf("Blocking: \t");
    clFinish(amdDevice.CommandQueue);
    double end_time = GettickCount();
-   printf("Backward %s,\ttime %f ms\n", layer_names_[i].c_str(), end_time-begin_time);
+   printf("Backward %s,\t\ttime %f ms\n", layer_names_[i].c_str(), end_time-begin_time);
   }
 }
 

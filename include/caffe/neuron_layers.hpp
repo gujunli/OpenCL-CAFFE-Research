@@ -76,6 +76,8 @@ class DropoutLayer : public NeuronLayer<Dtype> {
       : NeuronLayer<Dtype>(param) {}
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
+   
+  void ocl_setup();
   cl_mem MaskMem;
   cl_kernel ocl_Kernel_Fwd;
   cl_kernel ocl_Kernel_Bwd;

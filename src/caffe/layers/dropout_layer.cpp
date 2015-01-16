@@ -9,6 +9,9 @@
 #include "caffe/layer.hpp"
 #include "caffe/syncedmem.hpp"
 #include "caffe/vision_layers.hpp"
+#include "caffe/util/ocl_util.hpp"
+#include "caffe/util/ocl_wrapper.hpp"
+
 
 namespace caffe {
 
@@ -73,43 +76,21 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   int* mask = reinterpret_cast<int*>(rand_vec_->mutable_cpu_data());
   const int count = bottom[0]->count();
+  //int* mask_check = (int*)malloc(count * sizeof(int) );
   if (Caffe::phase() == Caffe::TRAIN) {
     // Create random numbers
     caffe_rng_bernoulli(count, 1. - threshold_, mask);
-    
-    cl_int status;
-    status = clEnqueueWriteBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask, 0, NULL, NULL);
-    if(status != CL_SUCCESS){
-      fprintf(stderr,"Failed to write buffer\n");
-    }
-
-    // DropoutForward(cl_kernel kernel, count, bottom_data, MaskMem, uint_thres_, scale_, top_data);   
-    cl_int ret;
-    ret=clSetKernelArg(ocl_Kernel_Fwd,0,sizeof(cl_int),(void*)&count);
-    ret|=clSetKernelArg(ocl_Kernel_Fwd,1,sizeof(cl_mem),(void*)&bottom_data);
-    ret|=clSetKernelArg(ocl_Kernel_Fwd,2,sizeof(cl_mem),(void*)&MaskMem);
-    ret|=clSetKernelArg(ocl_Kernel_Fwd,3,sizeof(cl_int),(void*)&threshold_); 
-    ret|=clSetKernelArg(ocl_Kernel_Fwd,4,sizeof(cl_float),(void*)&scale_); 
-    ret|=clSetKernelArg(ocl_Kernel_Fwd,5,sizeof(cl_mem),(void*)&top_data); 
-
-    if(ret!=CL_SUCCESS){
-      fprintf(stderr,"Failed to Set Args\n");
-    }   
- 
-    cl_event eventPoint;
-    size_t uiGlobal_Work_Size[]={count};
-    size_t uiLocal_Work_Size[]={256};
-    cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue,ocl_Kernel_Fwd, 1, NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
-    if(CL_SUCCESS!=iStatus){
-      fprintf(stderr,"Failed to enqueue kernel\n");
-    }
+    OCL_CHECK( clEnqueueWriteBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask, 0, NULL, NULL) );
+    Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (const unsigned int*)MaskMem, (const unsigned int)uint_thres_ , (Dtype)scale_, top_data);   
+    //OCL_CHECK( clEnqueueReadBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask_check, 0, NULL, NULL) );
+    //for(int i=0; i < count; i++)
+    //if (mask[i] != mask_check[i]) 
+    //LOG(INFO) << "mask not equal" << mask[i] << "vs" << mask_check[i];
+  
   } else {
-    cl_int status;
-    status = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)top_data, 0, 0, count*sizeof(Dtype), 0, NULL, NULL);
-    if(status != CL_SUCCESS){
-      fprintf(stderr,"Failed to Copy buffer\n");
-    }   
+    OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)top_data, 0, 0, count*sizeof(Dtype), 0, NULL, NULL) );
   }
+  //free(mask_check);
   return Dtype(0);
 }
 
@@ -123,24 +104,7 @@ void DropoutLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
     //const int* mask = reinterpret_cast<const int*>(rand_vec_->cpu_data());
     const int count = (*bottom)[0]->count();
-    
-    //DropoutBackward(const int n, const Dtype* in_diff, const unsigned int* mask, const unsigned int threshold, const float scale,Dtype* out_diff)
-
-    cl_int ret;
-    ret=clSetKernelArg(ocl_Kernel_Bwd,0,sizeof(cl_int),(void*)&count);
-    ret|=clSetKernelArg(ocl_Kernel_Bwd,1,sizeof(cl_mem),(void*)&top_diff);
-    ret|=clSetKernelArg(ocl_Kernel_Bwd,2,sizeof(cl_mem),(void*)&MaskMem);
-    ret|=clSetKernelArg(ocl_Kernel_Bwd,3,sizeof(cl_int),(void*)&threshold_); 
-    ret|=clSetKernelArg(ocl_Kernel_Bwd,4,sizeof(cl_float),(void*)&scale_); 
-    ret|=clSetKernelArg(ocl_Kernel_Bwd,5,sizeof(cl_mem),(void*)&bottom_diff); 
-   
-    cl_event eventPoint;
-    size_t uiGlobal_Work_Size[]={count};
-    size_t uiLocal_Work_Size[]={64};
-    cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue,ocl_Kernel_Bwd, 1, NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
-    if(CL_SUCCESS!=iStatus){
-      fprintf(stderr,"Failed to enqueue kernel\n");
-    }
+    Dropout_bp_gpu(ocl_Kernel_Bwd, count, top_diff, (const unsigned int*)MaskMem, uint_thres_ , (Dtype)scale_, bottom_diff);
   }
 }
 
