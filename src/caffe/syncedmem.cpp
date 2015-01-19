@@ -37,6 +37,7 @@ inline void SyncedMemory::to_cpu() {
   switch (head_) {
   case UNINITIALIZED:
     //allocate pre-pinned memory
+    //pinned_buffer_ptr_
     gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_ALLOC_HOST_PTR, size_, NULL, NULL);
     cpu_ptr_ = clEnqueueMapBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, size_, 0, NULL, NULL, NULL);
     memset(cpu_ptr_, 0, size_);
@@ -53,7 +54,7 @@ inline void SyncedMemory::to_cpu() {
     //OCL_CHECK(clEnqueueUnmapMemObject(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, cpu_ptr_, 0, NULL, NULL));
     //clFinish(amdDevice.CommandQueue);
     OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, (cl_mem)gpu_cache_ptr_, 0, 0, size_, 0, NULL, NULL));
-    // or: OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr, 0, NULL, NULL));
+    //OCL_CHECK(clEnqueueReadBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
     clFinish(amdDevice.CommandQueue);
     //cpu_ptr_ = clEnqueueMapBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, size_, 0, NULL, NULL, NULL);
     head_ = SYNCED;
@@ -97,7 +98,7 @@ inline void SyncedMemory::to_gpu() {
     //clFinish(amdDevice.CommandQueue);
 
     OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, (cl_mem)gpu_ptr_, 0, 0, size_, 0, NULL, NULL));
-    // or: OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr, 0, NULL, NULL));
+    //OCL_CHECK(clEnqueueWriteBuffer(amdDevice.CommandQueue, (cl_mem)gpu_ptr_, CL_TRUE, 0, size_, cpu_ptr_, 0, NULL, NULL));
 
     clFinish(amdDevice.CommandQueue);
     //cpu_ptr_ = clEnqueueMapBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, size_, 0, NULL, NULL, NULL);
