@@ -62,6 +62,7 @@ class SyncedMemory {
   void to_gpu();
   void* cpu_ptr_;
   void* gpu_ptr_;
+  void* gpu_cache_ptr_;
   size_t size_;
   SyncedHead head_;
   bool own_cpu_data_;
