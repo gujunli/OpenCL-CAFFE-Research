@@ -16,6 +16,25 @@
 namespace caffe {
 
 template <typename Dtype>
+void DropoutLayer<Dtype>::ocl_setup(int bottom_count){
+    //create OpenCL related cl_mem objects and kernels
+    //if(Caffe::mode() == Caffe::GPU){
+    cl_int _err;
+    ocl_Kernel_Fwd = clCreateKernel(amdDevice.Program,"DropoutForwardfloat",&_err);
+    ocl_Kernel_Bwd = clCreateKernel(amdDevice.Program,"DropoutBackwardfloat",&_err);
+    OCL_CHECK(_err);
+    MaskMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, bottom_count*sizeof(int), NULL, NULL);
+   //} 
+
+}
+template <typename Dtype>
+DropoutLayer<Dtype>::~DropoutLayer(){
+   OCL_CHECK( clReleaseMemObject(MaskMem) );
+   OCL_CHECK( clReleaseKernel(ocl_Kernel_Fwd) );
+   OCL_CHECK( clReleaseKernel(ocl_Kernel_Bwd) );
+}
+
+template <typename Dtype>
 void DropoutLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
   NeuronLayer<Dtype>::SetUp(bottom, top);
@@ -26,12 +45,7 @@ void DropoutLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   DCHECK(threshold_ < 1.);
   scale_ = 1. / (1. - threshold_);
   uint_thres_ = static_cast<unsigned int>(UINT_MAX * threshold_);
-  //if(Caffe::mode() == Caffe::GPU){
-    cl_int _err;
-    ocl_Kernel_Fwd = clCreateKernel(amdDevice.Program,"DropoutForwardfloat",&_err);
-    ocl_Kernel_Bwd = clCreateKernel(amdDevice.Program,"DropoutBackwardfloat",&_err);
-    MaskMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, bottom[0]->count()*sizeof(int), NULL, NULL);
-  //} 
+  ocl_setup(bottom[0]->count());
 }
 
 template <typename Dtype>
