@@ -42,11 +42,13 @@ template <typename Dtype>
 void caffe_gpu_div (cl_kernel Kernel, const int n, const Dtype* a, const Dtype* b, Dtype* y);
 
 template <typename Dtype>
-void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data, const unsigned int* MaskMem, const unsigned int threshold_, const Dtype scale_, Dtype *top_data);
+void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data, const unsigned int* MaskMem, const Dtype scale_, Dtype *top_data);
 
 template <typename Dtype>
 void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const Dtype scale_, Dtype* bottom_diff);
 
+template <typename Dtype>
+void caffe_gpu_bernoulli(cl_kernel ker_rand, const unsigned int* a, const unsigned int n, Dtype inf, Dtype sup, Dtype threshold);
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_OCL_UTIL_HPP_

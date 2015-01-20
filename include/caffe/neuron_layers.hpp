@@ -81,6 +81,7 @@ class DropoutLayer : public NeuronLayer<Dtype> {
   cl_mem MaskMem;
   cl_kernel ocl_Kernel_Fwd;
   cl_kernel ocl_Kernel_Bwd;
+  cl_kernel rng_kernel;
  protected:
   virtual Dtype Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);

@@ -285,15 +285,14 @@ template void caffe_gpu_powx<float> (cl_kernel Kernel, const int n, const float*
 template void caffe_gpu_powx<double> (cl_kernel Kernel, const int n, const double* a, const double alpha, double* y);
 
 template <typename Dtype>
-void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data, const unsigned int* MaskMem, const unsigned int threshold_, const Dtype scale_, Dtype* top_data)
+void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data, const unsigned int* MaskMem, const Dtype scale_, Dtype* top_data)
 {
     cl_int ret;
     ret=clSetKernelArg(kernel,0,sizeof(cl_int),(void*)&count);
     ret|=clSetKernelArg(kernel,1,sizeof(cl_mem),(void*)&bottom_data);
     ret|=clSetKernelArg(kernel,2,sizeof(cl_mem),(void*)&MaskMem);
-    ret|=clSetKernelArg(kernel,3,sizeof(cl_int),(void*)&threshold_); 
-    ret|=clSetKernelArg(kernel,4,sizeof(cl_float),(void*)&scale_); 
-    ret|=clSetKernelArg(kernel,5,sizeof(cl_mem),(void*)&top_data); 
+    ret|=clSetKernelArg(kernel,3,sizeof(cl_float),(void*)&scale_); 
+    ret|=clSetKernelArg(kernel,4,sizeof(cl_mem),(void*)&top_data); 
     OCL_CHECK(ret);
 
     size_t Global_Work_Size[] = {count};
@@ -301,8 +300,8 @@ void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data,
     OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
 }
 
-template void Dropout_fp_gpu<float>(cl_kernel kernel, const int count, const float* bottom_data, const unsigned int* MaskMem, const unsigned int threshold_, const float scale_, float* top_data);
-template void Dropout_fp_gpu<double>(cl_kernel kernel, const int count, const double* bottom_data, const unsigned int* MaskMem, const unsigned int threshold_, const double scale_, double* top_data);
+template void Dropout_fp_gpu<float>(cl_kernel kernel, const int count, const float* bottom_data, const unsigned int* MaskMem, const float scale_, float* top_data);
+template void Dropout_fp_gpu<double>(cl_kernel kernel, const int count, const double* bottom_data, const unsigned int* MaskMem, const double scale_, double* top_data);
 
 template <typename Dtype>
 void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const Dtype scale_, Dtype* bottom_diff)
@@ -322,6 +321,30 @@ void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, co
 }
 template void Dropout_bp_gpu<float>(cl_kernel kernel, const int count, const float* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const float scale_, float* bottom_diff);
 template void Dropout_bp_gpu<double>(cl_kernel kernel, const int count, const double* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const double scale_, double* bottom_diff);
+
+typedef unsigned int uint32_t;
+struct array4x32 {  uint32_t v[4]; };
+template <typename Dtype>
+void caffe_gpu_bernoulli(cl_kernel ker_rand, const unsigned int* a, const unsigned int n, Dtype inf, Dtype sup, Dtype threshold){
+        static unsigned c = 0;
+        unsigned nrounds = 20;
+        array4x32  rndctr4;
+        rndctr4.v[0] = rndctr4.v[1] = rndctr4.v[2] = rndctr4.v[3] = c++;
+        cl_uint size = n / 4; //Note: for correctness, we need to make sure n is dividable by 4
+
+        clSetKernelArg(ker_rand, 0, sizeof(cl_mem),     (void*)&a);
+        clSetKernelArg(ker_rand, 1, sizeof(array4x32),  (void*)&rndctr4);
+        clSetKernelArg(ker_rand, 2, sizeof(cl_float),   (void*)&inf);
+        clSetKernelArg(ker_rand, 3, sizeof(cl_float),   (void*)&sup);
+        clSetKernelArg(ker_rand, 4, sizeof(cl_float),   (void*)&threshold);
+        clSetKernelArg(ker_rand, 5, sizeof(cl_uint),    (void*)&nrounds);
+        clSetKernelArg(ker_rand, 6, sizeof(cl_uint),    (void*)&size);
+        size_t globalws[1] = {size};
+        size_t localws[1] = {256};
+        OCL_CHECK (clEnqueueNDRangeKernel(amdDevice.CommandQueue, ker_rand, 1, NULL, globalws, localws, 0, NULL, NULL) );
+}
+template void caffe_gpu_bernoulli<float>(cl_kernel kernel, const unsigned int* a, const unsigned int n, float inf, float sup, float threshold);
+template void caffe_gpu_bernoulli<double>(cl_kernel kernel, const unsigned int* a, const unsigned int n, double inf, double sup, double threshold);
 
 }  // namespace caffe
 
