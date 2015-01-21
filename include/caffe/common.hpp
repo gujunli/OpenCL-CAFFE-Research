@@ -32,7 +32,7 @@ private:\
 //#define Track_data_transfer
 //ifdef use_cpu_generator_dropout, use CPU generates radom number and copies to GPU
 //else use OpenCL generator
-//#define use_cpu_generator_dropout
+#define use_cpu_generator_dropout
 
 #define OCL_CHECK(condition) \
   do { \

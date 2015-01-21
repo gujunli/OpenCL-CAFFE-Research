@@ -22,7 +22,7 @@ void DropoutLayer<Dtype>::ocl_setup(int bottom_count){
     cl_int _err;
     ocl_Kernel_Fwd = clCreateKernel(amdDevice.Program,"DropoutForwardfloat",&_err);
     ocl_Kernel_Bwd = clCreateKernel(amdDevice.Program,"DropoutBackwardfloat",&_err);
-    rng_kernel = clCreateKernel(amdDevice.Program,"RNGBernoulliFloat",&_err);
+    //rng_kernel = clCreateKernel(amdDevice.Program,"RNGBernoulliFloat",&_err);
     OCL_CHECK(_err);
     MaskMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, bottom_count*sizeof(int), NULL, NULL);
    //} 
@@ -33,7 +33,7 @@ DropoutLayer<Dtype>::~DropoutLayer(){
    OCL_CHECK( clReleaseMemObject(MaskMem) );
    OCL_CHECK( clReleaseKernel(ocl_Kernel_Fwd) );
    OCL_CHECK( clReleaseKernel(ocl_Kernel_Bwd) );
-   OCL_CHECK( clReleaseKernel(rng_kernel) );
+   //OCL_CHECK( clReleaseKernel(rng_kernel) );
 }
 
 template <typename Dtype>
