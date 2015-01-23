@@ -22,7 +22,7 @@ void DropoutLayer<Dtype>::ocl_setup(int bottom_count){
     cl_int _err;
     ocl_Kernel_Fwd = clCreateKernel(amdDevice.Program,"DropoutForwardfloat",&_err);
     ocl_Kernel_Bwd = clCreateKernel(amdDevice.Program,"DropoutBackwardfloat",&_err);
-    //rng_kernel = clCreateKernel(amdDevice.Program,"RNGBernoulliFloat",&_err);
+    rng_kernel = clCreateKernel(amdDevice.Program,"RNGBernoulliFloat",&_err);
     OCL_CHECK(_err);
     MaskMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, bottom_count*sizeof(int), NULL, NULL);
    //} 
@@ -33,7 +33,7 @@ DropoutLayer<Dtype>::~DropoutLayer(){
    OCL_CHECK( clReleaseMemObject(MaskMem) );
    OCL_CHECK( clReleaseKernel(ocl_Kernel_Fwd) );
    OCL_CHECK( clReleaseKernel(ocl_Kernel_Bwd) );
-   //OCL_CHECK( clReleaseKernel(rng_kernel) );
+   OCL_CHECK( clReleaseKernel(rng_kernel) );
 }
 
 template <typename Dtype>
@@ -97,15 +97,9 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     caffe_rng_bernoulli(count, 1. - threshold_, mask);
     OCL_CHECK( clEnqueueWriteBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask, 0, NULL, NULL) );
     Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (int*)MaskMem, (Dtype)scale_, top_data);   
-    //int* mask_check = (int*)malloc(count * sizeof(int) );
-    //OCL_CHECK( clEnqueueReadBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask_check, 0, NULL, NULL) );
-    //for(int i=0; i < count; i++)
-    //if (mask[i] != mask_check[i]) 
-    //LOG(INFO) << "mask not equal" << mask[i] << "vs" << mask_check[i];
-    //free(mask_check);
 #else
-    caffe_gpu_bernoulli(rng_kernel, (const unsigned int*)MaskMem, count, (Dtype)0., (Dtype)1., threshold_);
-    Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (const unsigned int*)MaskMem, (Dtype)scale_, top_data);   
+    caffe_gpu_bernoulli(rng_kernel, (int*)MaskMem, count, (Dtype)0., (Dtype)1., threshold_);
+    Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (int*)MaskMem, (Dtype)scale_, top_data);   
 #endif
   
   } else {

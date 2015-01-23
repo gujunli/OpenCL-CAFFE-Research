@@ -118,6 +118,9 @@ void SyncedMemory::set_cpu_data(void* data) {
   own_cpu_data_ = false;
 }
 
+
+//TO_DO Junli: implement set_gpu_data(prefetech_data_ptr)
+//  {gpu_ptr = prefetch_data_ptr; head_ = HEAD_AT_GPU; }
 const void* SyncedMemory::gpu_data() {
   to_gpu();
   return (const void*)gpu_ptr_;

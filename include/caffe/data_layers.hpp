@@ -120,6 +120,24 @@ class DataLayer : public Layer<Dtype> {
   pthread_t thread_;
   shared_ptr<Blob<Dtype> > prefetch_data_;
   shared_ptr<Blob<Dtype> > prefetch_label_;
+  //cl_mem data_buf; 
+  //prefetch_data_ptr; 
+  //cl_mem label_buf;
+  //prefetch_label_ptr; 
+  //need to implement 
+   //void prefetch_data.init(this->layer_param_.data_param().batch_size(), datum.channels(),
+    //    crop_size, crop_size){
+   //data_size = batch_size*channels*crop_size*crop_size
+   //clCreateBuffer(..., CL_MEM_PERSISTENT_MEM_AMD, data_size);
+   //prefetch_data_ptr = clEnqueueMapBuffer(data_buf, CL_MEP_WRITE); 
+   //}
+  //void  prefetch_data.init(this->layer_param_.data_param().batch_size(), datum.channels(),
+    //    crop_size, crop_size)
+   //{
+   //label_size = batch_size*1*1*1;
+   //clCreateBuffer(..., CL_MEM_PERSISTENT_MEM_AMD, label_size)
+   ///prefetch_label_ptr = clEnqueueMapBuffer(data_buf, CL_MEP_WRITE); 
+   //}
   Blob<Dtype> data_mean_;
   bool output_labels_;
   Caffe::Phase phase_;

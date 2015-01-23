@@ -25,9 +25,11 @@ void* DataLayerPrefetch(void* layer_pointer) {
   Datum datum;
   CHECK(layer->prefetch_data_);
   Dtype* top_data = layer->prefetch_data_->mutable_cpu_data();
+  //Dtype* top_data = layer->prefetech_data->prefetch_data_ptr;
   Dtype* top_label;
   if (layer->output_labels_) {
     top_label = layer->prefetch_label_->mutable_cpu_data();
+    //top_label = layer->prefetch_label->prefetch_label_ptr;
   }
   const Dtype scale = layer->layer_param_.data_param().scale();
   const int batch_size = layer->layer_param_.data_param().batch_size();
@@ -174,6 +176,8 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     prefetch_data_.reset(new Blob<Dtype>(
         this->layer_param_.data_param().batch_size(), datum.channels(),
         crop_size, crop_size));
+    //TO-DO Junli: replace the prefetch_data_.reset with prefetch_data.init(this->layer_param_.data_param().batch_size(), datum.channels(),
+    //    crop_size, crop_size)
   } else {
     (*top)[0]->Reshape(
         this->layer_param_.data_param().batch_size(), datum.channels(),
@@ -181,6 +185,8 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     prefetch_data_.reset(new Blob<Dtype>(
         this->layer_param_.data_param().batch_size(), datum.channels(),
         datum.height(), datum.width()));
+    //TO_DO Junli: replace the prefetch_data_.reset with prefetch_data.init(this->layer_param_.data_param().batch_size(), datum.channels(),
+    //    crop_size, crop_size)
   }
   LOG(INFO) << "output data size: " << (*top)[0]->num() << ","
       << (*top)[0]->channels() << "," << (*top)[0]->height() << ","
@@ -190,6 +196,8 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     (*top)[1]->Reshape(this->layer_param_.data_param().batch_size(), 1, 1, 1);
     prefetch_label_.reset(
         new Blob<Dtype>(this->layer_param_.data_param().batch_size(), 1, 1, 1));
+    //TO_DO Junli: replace the prefetch_label_.reset with prefetch_label.init(this->layer_param_.data_param().batch_size(), datum.channels(),
+    //    crop_size, crop_size)
   }
   // datum size
   datum_channels_ = datum.channels();
@@ -217,6 +225,8 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   // cpu_data calls so that the prefetch thread does not accidentally make
   // simultaneous cudaMalloc calls when the main thread is running. In some
   // GPUs this seems to cause failures if we do not so.
+  //TO_DO Junli: we need to comment this out, since we on longer use their original blobs
+  //TO_DO Junli: that says, we always prefetch directly into the device buffer, prefetch_data_buf
   prefetch_data_->mutable_cpu_data();
   if (output_labels_) {
     prefetch_label_->mutable_cpu_data();
@@ -265,9 +275,13 @@ Dtype DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   // Copy the data
   caffe_copy(prefetch_data_->count(), prefetch_data_->cpu_data(),
              (*top)[0]->mutable_cpu_data());
+  //caffe_copy(prefetch_data_->count(), prefetch_data_->prefetch_data_ptr,
+    //         (*top)[0]->mutable_cpu_data());
   if (output_labels_) {
     caffe_copy(prefetch_label_->count(), prefetch_label_->cpu_data(),
                (*top)[1]->mutable_cpu_data());
+    //caffe_copy(prefetch_label_->count(), prefetch_label_->prefetch_label_ptr,
+    //           (*top)[1]->mutable_cpu_data());
   }
   // Start a new prefetch thread
   CreatePrefetchThread();
@@ -280,10 +294,12 @@ Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
   // First, join the thread
   JoinPrefetchThread();
-  // Copy the data
+  // Copy the data from prefetch thread to data_layer
   //Junli's Note, using CL_FALSE introduced error; started conv layer computation before data is copied in. This says that data copy in on the critical path. may have space to optimize prefetch performance.
+  //TO_DO Junli: implement set_gpu_data(prefetech_data_ptr)
   OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem) (*top)[0]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_data_->count(), (void*) prefetch_data_->cpu_data(), 0, NULL, NULL) );
   if (output_labels_) {
+  //TO_DO Junli: implement set_gpu_data(prefetech_label_ptr)
   OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype) * prefetch_label_->count(), (void*) prefetch_label_->cpu_data(), 0, NULL, NULL));
    }
 #ifdef Track_data_transfer

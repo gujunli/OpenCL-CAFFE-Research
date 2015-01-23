@@ -48,7 +48,7 @@ template <typename Dtype>
 void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, const int* MaskMem, const float threshold_, const Dtype scale_, Dtype* bottom_diff);
 
 template <typename Dtype>
-void caffe_gpu_bernoulli(cl_kernel ker_rand, const unsigned int* a, const unsigned int n, Dtype inf, Dtype sup, Dtype threshold);
+void caffe_gpu_bernoulli(cl_kernel ker_rand, int* a, const unsigned int n, Dtype inf, Dtype sup, Dtype threshold);
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_OCL_UTIL_HPP_
