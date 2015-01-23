@@ -343,13 +343,13 @@ template __attribute__ ((mangled_name(powx_float))) __kernel void powx (const in
 template __attribute__ ((mangled_name(powx_double))) __kernel void powx (const int n, __global const double* a, const double alpha, __global double* y); 
 
 template <class T>
-__kernel void DropoutForward(const int n, __global T *in, __global const T* mask, const T scale, __global T *out){
+__kernel void DropoutForward(const int n, __global T *in, __global const int* mask, const T scale, __global T *out){
     int index = get_global_id(0);
     if (index < n)
         out[index] = in[index] * scale * mask[index];
 }
-template __attribute__((mangled_name(DropoutForwardfloat))) __kernel void DropoutForward(const int n, __global float* in,  __global const float* mask, const float scale, __global float* out); 
-template __attribute__((mangled_name(DropoutForwarddouble))) __kernel void DropoutForward(const int n, __global double* in, __global const double* mask, const double scale, __global double* out);
+template __attribute__((mangled_name(DropoutForwardfloat))) __kernel void DropoutForward(const int n, __global float* in,  __global const int* mask, const float scale, __global float* out); 
+template __attribute__((mangled_name(DropoutForwarddouble))) __kernel void DropoutForward(const int n, __global double* in, __global const int* mask, const double scale, __global double* out);
 
 
 template <class T>

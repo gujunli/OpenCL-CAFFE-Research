@@ -91,17 +91,18 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   int* mask = reinterpret_cast<int*>(rand_vec_->mutable_cpu_data());
-  const unsigned int count = bottom[0]->count();
+  const int count = bottom[0]->count();
   if (Caffe::phase() == Caffe::TRAIN) {
 #ifdef use_cpu_generator_dropout 
     caffe_rng_bernoulli(count, 1. - threshold_, mask);
     OCL_CHECK( clEnqueueWriteBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask, 0, NULL, NULL) );
-    Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (const unsigned int*)MaskMem, (Dtype)scale_, top_data);   
+    Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (int*)MaskMem, (Dtype)scale_, top_data);   
     //int* mask_check = (int*)malloc(count * sizeof(int) );
     //OCL_CHECK( clEnqueueReadBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask_check, 0, NULL, NULL) );
     //for(int i=0; i < count; i++)
     //if (mask[i] != mask_check[i]) 
     //LOG(INFO) << "mask not equal" << mask[i] << "vs" << mask_check[i];
+    //free(mask_check);
 #else
     caffe_gpu_bernoulli(rng_kernel, (const unsigned int*)MaskMem, count, (Dtype)0., (Dtype)1., threshold_);
     Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (const unsigned int*)MaskMem, (Dtype)scale_, top_data);   
@@ -110,7 +111,6 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   } else {
     OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)top_data, 0, 0, count*sizeof(Dtype), 0, NULL, NULL) );
   }
-  //free(mask_check);
   return Dtype(0);
 }
 
@@ -124,7 +124,7 @@ void DropoutLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
     //const int* mask = reinterpret_cast<const int*>(rand_vec_->cpu_data());
     const int count = (*bottom)[0]->count();
-    Dropout_bp_gpu(ocl_Kernel_Bwd, count, top_diff, (const unsigned int*)MaskMem, uint_thres_ , (Dtype)scale_, bottom_diff);
+    Dropout_bp_gpu(ocl_Kernel_Bwd, count, top_diff, (int*)MaskMem, uint_thres_ , (Dtype)scale_, bottom_diff);
   }
 }
 

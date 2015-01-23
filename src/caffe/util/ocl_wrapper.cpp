@@ -285,7 +285,7 @@ template void caffe_gpu_powx<float> (cl_kernel Kernel, const int n, const float*
 template void caffe_gpu_powx<double> (cl_kernel Kernel, const int n, const double* a, const double alpha, double* y);
 
 template <typename Dtype>
-void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data, const unsigned int* MaskMem, const Dtype scale_, Dtype* top_data)
+void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data, const int* MaskMem, const Dtype scale_, Dtype* top_data)
 {
     cl_int ret;
     ret=clSetKernelArg(kernel,0,sizeof(cl_int),(void*)&count);
@@ -300,11 +300,11 @@ void Dropout_fp_gpu(cl_kernel kernel, const int count, const Dtype* bottom_data,
     OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
 }
 
-template void Dropout_fp_gpu<float>(cl_kernel kernel, const int count, const float* bottom_data, const unsigned int* MaskMem, const float scale_, float* top_data);
-template void Dropout_fp_gpu<double>(cl_kernel kernel, const int count, const double* bottom_data, const unsigned int* MaskMem, const double scale_, double* top_data);
+template void Dropout_fp_gpu<float>(cl_kernel kernel, const int count, const float* bottom_data, const int* MaskMem, const float scale_, float* top_data);
+template void Dropout_fp_gpu<double>(cl_kernel kernel, const int count, const double* bottom_data, const int* MaskMem, const double scale_, double* top_data);
 
 template <typename Dtype>
-void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const Dtype scale_, Dtype* bottom_diff)
+void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, const int* MaskMem, const float threshold_, const Dtype scale_, Dtype* bottom_diff)
 {
     cl_int ret;
     ret = clSetKernelArg(kernel, 0,sizeof(cl_int),  (void*)&count);
@@ -319,8 +319,8 @@ void Dropout_bp_gpu(cl_kernel kernel, const int count, const Dtype* top_diff, co
     size_t Local_Work_Size[] = {256};
     OCL_CHECK(clEnqueueNDRangeKernel(amdDevice.CommandQueue, kernel, 1, NULL, Global_Work_Size, Local_Work_Size, 0, NULL, NULL));
 }
-template void Dropout_bp_gpu<float>(cl_kernel kernel, const int count, const float* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const float scale_, float* bottom_diff);
-template void Dropout_bp_gpu<double>(cl_kernel kernel, const int count, const double* top_diff, const unsigned int* MaskMem, const unsigned int threshold_, const double scale_, double* bottom_diff);
+template void Dropout_bp_gpu<float>(cl_kernel kernel, const int count, const float* top_diff, const int* MaskMem, const float threshold_, const float scale_, float* bottom_diff);
+template void Dropout_bp_gpu<double>(cl_kernel kernel, const int count, const double* top_diff, const int* MaskMem, const float threshold_, const double scale_, double* bottom_diff);
 
 typedef unsigned int uint32_t;
 struct array4x32 {  uint32_t v[4]; };

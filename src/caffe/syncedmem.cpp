@@ -110,7 +110,7 @@ void SyncedMemory::set_cpu_data(void* data) {
   if (own_cpu_data_) {
   OCL_CHECK( clEnqueueUnmapMemObject(amdDevice.CommandQueue, (cl_mem) gpu_cache_ptr_, cpu_ptr_, 0, NULL, NULL));
   OCL_CHECK( clReleaseMemObject((cl_mem) gpu_cache_ptr_));
-  //clFinish(amdDevice.CommandQueue); //is this necessary?
+  clFinish(amdDevice.CommandQueue); //is this necessary?
   }
   gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_USE_HOST_PTR, size_, data, NULL);
   cpu_ptr_ = clEnqueueMapBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, size_, 0, NULL, NULL, NULL);
