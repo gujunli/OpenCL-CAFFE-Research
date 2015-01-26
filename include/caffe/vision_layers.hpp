@@ -252,6 +252,10 @@ class LRNLayer : public Layer<Dtype> {
   int height_;
   int width_;
 
+  cl_kernel LFSkernel;
+  cl_kernel LCDkernel;
+  cl_kernel LCOkernel;
+
   // Fields used for normalization ACROSS_CHANNELS
   // scale_ stores the intermediate summing results
   Blob<Dtype> scale_;

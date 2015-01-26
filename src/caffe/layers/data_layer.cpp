@@ -25,11 +25,11 @@ void* DataLayerPrefetch(void* layer_pointer) {
   Datum datum;
   CHECK(layer->prefetch_data_);
   Dtype* top_data = layer->prefetch_data_->mutable_cpu_data();
-  //Dtype* top_data = layer->prefetech_data->prefetch_data_ptr;
+  //Dtype* top_data = layer->prefetch_data_ptr;
   Dtype* top_label;
   if (layer->output_labels_) {
     top_label = layer->prefetch_label_->mutable_cpu_data();
-    //top_label = layer->prefetch_label->prefetch_label_ptr;
+    //top_label = layer->prefetch_label_ptr;
   }
   const Dtype scale = layer->layer_param_.data_param().scale();
   const int batch_size = layer->layer_param_.data_param().batch_size();

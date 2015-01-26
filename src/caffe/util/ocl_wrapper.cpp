@@ -334,9 +334,7 @@ void caffe_gpu_bernoulli(cl_kernel ker_rand, int* a, const unsigned int n, Dtype
         
         cl_int ret;
         ret  = clSetKernelArg(ker_rand, 0, sizeof(cl_mem),     (void*)&a);
-        OCL_CHECK(ret);
         ret |= clSetKernelArg(ker_rand, 1, sizeof(array4x32),  (void*)&rndctr4);
-        OCL_CHECK(ret);
         ret |= clSetKernelArg(ker_rand, 2, sizeof(cl_float),   (void*)&inf);
         ret |= clSetKernelArg(ker_rand, 3, sizeof(cl_float),   (void*)&sup);
         ret |= clSetKernelArg(ker_rand, 4, sizeof(cl_float),   (void*)&threshold);

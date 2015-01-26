@@ -720,7 +720,7 @@ __kernel void PRNG_threefry4x32(
 
 template __attribute__((mangled_name(RNGBernoulliFloat))) __kernel void PRNG_threefry4x32(__global uint4 *randomnumber, threefry4x32_ctr_t ctr_i, float inf, float sup, float threshold, uint nrounds, uint numrandonm);
 
-template __attribute__((mangled_name(RNGBernoulliDouble))) __kernel void PRNG_threefry4x32(__global uint4 *randomnumber, threefry4x32_ctr_t ctr_i, double inf, double sup, double threshold, uint nrounds, uint numrandonm);typedef uint uint32_t;
+template __attribute__((mangled_name(RNGBernoulliDouble))) __kernel void PRNG_threefry4x32(__global uint4 *randomnumber, threefry4x32_ctr_t ctr_i, double inf, double sup, double threshold, uint nrounds, uint numrandonm);
 
 //end of the looooooong gpu_random_generator kernel 
 
@@ -1086,4 +1086,121 @@ __kernel void DropoutBackward(const int n, __global T *in_diff, __global const i
 }
 template __attribute__((mangled_name(DropoutBackwardfloat))) __kernel void DropoutBackward(const int n, __global float* in_diff,  __global const int* mask, const unsigned int threshold, const float scale, __global float* out_diff); 
 template __attribute__((mangled_name(DropoutBackwarddouble))) __kernel void DropoutBackward(const int n, __global double* in_diff, __global const int* mask, const unsigned int threshold, const double scale, __global double* out_diff);
+
+template <class T>
+__kernel void LRNFillScale(const int nthreads, __global const T* in, const int num, const int channels, const int height, const int width, const int size, const T alpha_over_size, __global T* scale) {
+  int index = get_global_id(0);
+  int tmp = get_global_size(0);
+  for(index; index < nthreads; index += tmp) {
+    // find out the local offset
+    int w = index % width;
+    int h = (index / width) % height;
+    int n = index / width / height;
+    int offset = (n * channels * height + h) * width + w;
+    int step = height * width;
+    in += offset;
+    scale += offset;
+    int head = 0;
+    int pre_pad = (size - 1) / 2;
+    int post_pad = size - pre_pad - 1;
+    T accum_scale = 0;
+    // fill the scale at [n, :, h, w]
+    // accumulate values
+    while (head < post_pad) {
+      accum_scale += in[head * step] * in[head * step];
+      ++head;
+    }
+    // until we reach size, nothing needs to be subtracted
+    while (head < size) {
+      accum_scale += in[head * step] * in[head * step];
+      scale[(head - post_pad) * step] = 1. + accum_scale * alpha_over_size;
+      ++head;
+    }
+    // both add and subtract
+    while (head < channels) {
+      accum_scale += in[head * step] * in[head * step];
+      accum_scale -= in[(head - size) * step] * in[(head - size) * step];
+      scale[(head - post_pad) * step] = 1. + accum_scale * alpha_over_size;
+      ++head;
+    }
+    // subtract only
+    while (head < channels + post_pad) {
+      accum_scale -= in[(head - size) * step] * in[(head - size) * step];
+      scale[(head - post_pad) * step] = 1. + accum_scale * alpha_over_size;
+      ++head;
+    }
+  }
+}
+template __attribute__((mangled_name(LRNFillScalefloat))) __kernel void LRNFillScale (const int nthreads, __global const float* in, const int num, const int channels, const int height, const int width, const int size, const float alpha_over_size, __global float* scale);
+template __attribute__((mangled_name(LRNFillScaledouble))) __kernel void LRNFillScale (const int nthreads, __global const double* in, const int num, const int channels, const int height, const int width, const int size, const double alpha_over_size, __global double* scale);
+
+template <class T>
+__kernel void LRNComputeOutput(const int nthreads, __global const T* in, __global const T* scale, const T negative_beta, __global T* out) {
+  int index = get_global_id(0);
+  int tmp = get_global_size(0);
+  for(index; index < nthreads; index += tmp) 
+    out[index] = in[index] * pow(scale[index], negative_beta);
+}
+template __attribute__((mangled_name(LRNComputeOutputfloat))) __kernel void LRNComputeOutput(const int nthreads, __global const float* in, __global const float* scale, const float negative_beta, __global float* out);
+template __attribute__((mangled_name(LRNComputeOutputdouble))) __kernel void LRNComputeOutput(const int nthreads, __global const double* in, __global const double* scale, const double negative_beta, __global double* out);
+
+template <class T>
+__kernel void LRNComputeDiff(const int nthreads, __global const T* bottom_data, __global const T* top_data, __global const T* scale, __global const T* top_diff, const int num, const int channels, const int height, const int width, const int size, const T negative_beta, const T cache_ratio, __global T* bottom_diff) {
+  int index = get_global_id(0);
+  int tmp = get_global_size(0);
+  for(index; index < nthreads; index += tmp) {
+    int w = index % width;
+    int h = (index / width) % height;
+    int n = index / width / height;
+    int offset = (n * channels * height + h) * width + w;
+    int step = height * width;
+    bottom_data += offset;
+    top_data += offset;
+    scale += offset;
+    top_diff += offset;
+    bottom_diff += offset;
+    int head = 0;
+    int pre_pad = size - (size + 1) / 2;
+    int post_pad = size - pre_pad - 1;
+    T accum_ratio = 0;
+    // accumulate values
+    while (head < post_pad) {
+      accum_ratio += top_diff[head * step] * top_data[head * step] /
+          scale[head * step];
+      ++head;
+    }
+    // until we reach size, nothing needs to be subtracted
+    while (head < size) {
+      accum_ratio += top_diff[head * step] * top_data[head * step] /
+          scale[head * step];
+      bottom_diff[(head - post_pad) * step] = top_diff[(head - post_pad) * step]
+          * pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(head - post_pad) * step] * accum_ratio;
+      ++head;
+    }
+    // both add and subtract
+    while (head < channels) {
+      accum_ratio += top_diff[head * step] * top_data[head * step] /
+          scale[head * step];
+      accum_ratio -= top_diff[(head - size) * step] *
+          top_data[(head - size) * step] / scale[(head - size) * step];
+      bottom_diff[(head - post_pad) * step] = top_diff[(head - post_pad) * step]
+          * pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(head - post_pad) * step] * accum_ratio;
+      ++head;
+    }
+    // subtract only
+    while (head < channels + post_pad) {
+      accum_ratio -= top_diff[(head - size) * step] *
+          top_data[(head - size) * step] / scale[(head - size) * step];
+      bottom_diff[(head - post_pad) * step] = top_diff[(head - post_pad) * step]
+          * pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(head - post_pad) * step] * accum_ratio;
+      ++head;
+    }
+  }
+}
+
+template __attribute__((mangled_name(LRNComputeDifffloat))) __kernel void LRNComputeDiff(const int nthreads, __global const float* bottom_data, __global const float* top_data, __global const float* scale, __global const float* top_diff, const int num, const int channels, const int height, const int width, const int size, const float negative_beta, const float cache_ratio, __global float* bottom_diff);
+template __attribute__((mangled_name(LRNComputeDiffdouble))) __kernel void LRNComputeDiff(const int nthreads, __global const double* bottom_data, __global const double* top_data, __global const double* scale, __global const double* top_diff, const int num, const int channels, const int height, const int width, const int size, const double negative_beta, const double cache_ratio, __global double* bottom_diff);
 

@@ -100,6 +100,14 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 #else
     caffe_gpu_bernoulli(rng_kernel, (int*)MaskMem, count, (Dtype)0., (Dtype)1., threshold_);
     Dropout_fp_gpu(ocl_Kernel_Fwd, count, bottom_data, (int*)MaskMem, (Dtype)scale_, top_data);   
+    
+    int count1, count0;
+    int* mask_check = (int*)malloc(count * sizeof(int) );
+    OCL_CHECK( clEnqueueReadBuffer(amdDevice.CommandQueue, MaskMem, CL_TRUE, 0, count * sizeof(int), (void*)mask_check, 0, NULL, NULL) );
+    for(int i=0; i < count; i++){
+    count0 += (mask_check[i] ==0); 
+    count1 += (mask_check[i] ==1); }
+    LOG(INFO) << "threshold=" <<threshold_<< " 0:1 ratio=" << count0 << " : " << count1;
 #endif
   
   } else {

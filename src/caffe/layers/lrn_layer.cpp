@@ -1,7 +1,7 @@
 // Copyright 2014 BVLC and contributors.
 
 #include <vector>
-
+#include <iostream>
 #include "caffe/layer.hpp"
 #include "caffe/vision_layers.hpp"
 #include "caffe/util/math_functions.hpp"
@@ -27,6 +27,9 @@ void LRNLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
     (*top)[0]->Reshape(num_, channels_, height_, width_);
     scale_.Reshape(num_, channels_, height_, width_);
+    LFSkernel = clCreateKernel(amdDevice.Program,"LRNFillScalefloat",NULL);
+    LCDkernel = clCreateKernel(amdDevice.Program,"LRNComputeDifffloat",NULL);
+    LCOkernel = clCreateKernel(amdDevice.Program,"LRNComputeOutputfloat",NULL);
     break;
   case LRNParameter_NormRegion_WITHIN_CHANNEL:
     {
@@ -48,7 +51,7 @@ void LRNLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
       square_layer_.reset(new PowerLayer<Dtype>(square_param));
       square_layer_->SetUp(square_bottom_vec_, &square_top_vec_);
       CHECK_EQ(square_output_.num(), num_);
-      CHECK_EQ(square_output_.channels(), channels_);
+
       CHECK_EQ(square_output_.height(), height_);
       CHECK_EQ(square_output_.width(), width_);
       // Set up pool_layer_ to sum over square neighborhoods of the input.
@@ -120,9 +123,7 @@ Dtype LRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
   switch (this->layer_param_.lrn_param().norm_region()) {
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
-    LOG(INFO) << "Unported LRN Across Channel function.";
-    return Dtype(0);//need to be deleted
-    //return CrossChannelForward_gpu(bottom, top);
+    return CrossChannelForward_gpu(bottom, top);
   case LRNParameter_NormRegion_WITHIN_CHANNEL:
     LOG(INFO) << "LRN Within Channel function.";
     return WithinChannelForward(bottom, top);
@@ -174,7 +175,7 @@ Dtype LRNLayer<Dtype>::CrossChannelForward_cpu(
           scale_data + scale_.offset(n, c));
     }
   }
-
+  std::cout<<scale_data[0]<<" "<<scale_data[1]<<" "<<scale_data[2]<<std::endl;
   // In the end, compute output
   caffe_powx<Dtype>(scale_.count(), scale_data, -beta_, top_data);
   caffe_mul<Dtype>(scale_.count(), top_data, bottom_data, top_data);
@@ -216,8 +217,7 @@ void LRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
   switch (this->layer_param_.lrn_param().norm_region()) {
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
-    //CrossChannelBackward_gpu(top, propagate_down, bottom);
-    LOG(INFO) << "Unported LRN Across Channel function.";
+    CrossChannelBackward_gpu(top, propagate_down, bottom);
     break;
   case LRNParameter_NormRegion_WITHIN_CHANNEL:
     WithinChannelBackward(top, propagate_down, bottom);
@@ -296,7 +296,101 @@ void LRNLayer<Dtype>::WithinChannelBackward(
   }
 }
 
-INSTANTIATE_CLASS(LRNLayer);
+template <typename Dtype>
+Dtype LRNLayer<Dtype>::CrossChannelForward_gpu(
+    const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
+  // First, compute scale
+  const Dtype* bottom_data = bottom[0]->gpu_data();
+  //const Dtype* bottom_data2 = bottom[0]->cpu_data();
+  //std::cout<<bottom_data2[0]<<" "<<bottom_data2[1]<<" "<<bottom_data2[2]<<std::endl;
+  Dtype* top_data = (*top)[0]->mutable_gpu_data();
+  Dtype* scale_data = scale_.mutable_gpu_data();
+  // We will launch one kernel for each pixel location, and have the kernel
+  // go through all the channels.
+  int n_threads = num_ * height_ * width_;
+  Dtype alpha_over_size = alpha_ / size_;
+  // NOLINT_NEXT_LINE(whitespace/operators)
+  cl_int ret;
+  ret=clSetKernelArg(LFSkernel,0,sizeof(cl_int),(void*)&n_threads);
+  ret|=clSetKernelArg(LFSkernel,1,sizeof(cl_mem),(void*)&bottom_data);
+  ret|=clSetKernelArg(LFSkernel,2,sizeof(cl_int),(void*)&num_);
+  ret|=clSetKernelArg(LFSkernel,3,sizeof(cl_int),(void*)&channels_);
+  ret|=clSetKernelArg(LFSkernel,4,sizeof(cl_int),(void*)&height_);
+  ret|=clSetKernelArg(LFSkernel,5,sizeof(cl_int),(void*)&width_);
+  ret|=clSetKernelArg(LFSkernel,6,sizeof(cl_int),(void*)&size_);
+  ret|=clSetKernelArg(LFSkernel,7,sizeof(cl_float),(void*)&alpha_over_size);
+  ret|=clSetKernelArg(LFSkernel,8,sizeof(cl_mem),(void*)&scale_data);
+  if(ret!=CL_SUCCESS){
+    fprintf(stderr,"Failed to Set Args\n");
+  }
+  cl_event eventPoint;
+  size_t uiGlobal_Work_Size[]={n_threads};
+  size_t uiLocal_Work_Size[]={64};
+  cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue, LFSkernel, 1, NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
+  if(CL_SUCCESS!=iStatus){
+     fprintf(stderr,"Failed to enqueue kernel\n");
+  }
 
+  int n_threads2 = bottom[0]->count();
+  // NOLINT_NEXT_LINE(whitespace/operators)
+  Dtype tmp_beta = -beta_; 
+  ret=clSetKernelArg(LCOkernel,0,sizeof(cl_int),(void*)&n_threads2);
+  ret|=clSetKernelArg(LCOkernel,1,sizeof(cl_mem),(void*)&bottom_data);
+  ret|=clSetKernelArg(LCOkernel,2,sizeof(cl_mem),(void*)&scale_data);
+  ret|=clSetKernelArg(LCOkernel,3,sizeof(cl_float),(void*)&tmp_beta);
+  ret|=clSetKernelArg(LCOkernel,4,sizeof(cl_mem),(void*)&top_data);
+  if(ret!=CL_SUCCESS){
+    fprintf(stderr,"Failed to Set Args\n");
+  }
+  size_t uiGlobal_Work_Size2[]={n_threads2};
+  size_t uiLocal_Work_Size2[]={64};
+  iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue, LCOkernel, 1, NULL,uiGlobal_Work_Size2,uiLocal_Work_Size2,0,NULL,&eventPoint);
+  if(CL_SUCCESS!=iStatus){
+    fprintf(stderr,"Failed to enqueue kernel\n");
+  } 
+  return Dtype(0.);
+}
+
+template <typename Dtype>
+void LRNLayer<Dtype>::CrossChannelBackward_gpu(
+    const vector<Blob<Dtype>*>& top, const bool propagate_down,
+    vector<Blob<Dtype>*>* bottom) {
+  int n_threads = num_ * height_ * width_;
+  // NOLINT_NEXT_LINE(whitespace/operators)
+  const Dtype* top_data = top[0]->gpu_data();
+  const Dtype* bottom_data = (*bottom)[0]->gpu_data();
+  const Dtype* scale_data = scale_.gpu_data();
+  const Dtype* top_diff = top[0]->gpu_diff();
+  const Dtype tmp_beta = -beta_;
+  const Dtype cache_ratio =  Dtype(2. * alpha_ * beta_ / size_);
+  Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
+  cl_int ret;
+  ret=clSetKernelArg(LCDkernel,0,sizeof(cl_int),(void*)&n_threads);
+  ret|=clSetKernelArg(LCDkernel,1,sizeof(cl_mem),(void*)&bottom_data);
+  ret|=clSetKernelArg(LCDkernel,2,sizeof(cl_mem),(void*)&top_data);
+  ret|=clSetKernelArg(LCDkernel,3,sizeof(cl_mem),(void*)&scale_data);
+  ret|=clSetKernelArg(LCDkernel,4,sizeof(cl_mem),(void*)&top_diff);
+  ret|=clSetKernelArg(LCDkernel,5,sizeof(cl_int),(void*)&num_);
+  ret|=clSetKernelArg(LCDkernel,6,sizeof(cl_int),(void*)&channels_);
+  ret|=clSetKernelArg(LCDkernel,7,sizeof(cl_int),(void*)&height_);
+  ret|=clSetKernelArg(LCDkernel,8,sizeof(cl_int),(void*)&width_);
+  ret|=clSetKernelArg(LCDkernel,9,sizeof(cl_int),(void*)&size_);
+  ret|=clSetKernelArg(LCDkernel,10,sizeof(cl_float),(void*)&tmp_beta);
+  ret|=clSetKernelArg(LCDkernel,11,sizeof(cl_float),(void*)&cache_ratio);
+  ret|=clSetKernelArg(LCDkernel,12,sizeof(cl_mem),(void*)&bottom_diff);
+  if(ret!=CL_SUCCESS){
+    fprintf(stderr,"Failed to Set Args\n");
+  }
+  cl_event eventPoint;
+  size_t uiGlobal_Work_Size[]={n_threads};
+  size_t uiLocal_Work_Size[]={256};
+  cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue, LCDkernel, 1, NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
+  if(CL_SUCCESS!=iStatus){
+    fprintf(stderr,"Failed to enqueue kernel\n");
+  }
+
+}
+
+INSTANTIATE_CLASS(LRNLayer);
 
 }  // namespace caffe
