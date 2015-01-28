@@ -301,15 +301,12 @@ Dtype LRNLayer<Dtype>::CrossChannelForward_gpu(
     const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
   // First, compute scale
   const Dtype* bottom_data = bottom[0]->gpu_data();
-  //const Dtype* bottom_data2 = bottom[0]->cpu_data();
-  //std::cout<<bottom_data2[0]<<" "<<bottom_data2[1]<<" "<<bottom_data2[2]<<std::endl;
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   Dtype* scale_data = scale_.mutable_gpu_data();
   // We will launch one kernel for each pixel location, and have the kernel
   // go through all the channels.
   int n_threads = num_ * height_ * width_;
   Dtype alpha_over_size = alpha_ / size_;
-  // NOLINT_NEXT_LINE(whitespace/operators)
   cl_int ret;
   ret=clSetKernelArg(LFSkernel,0,sizeof(cl_int),(void*)&n_threads);
   ret|=clSetKernelArg(LFSkernel,1,sizeof(cl_mem),(void*)&bottom_data);
@@ -325,7 +322,7 @@ Dtype LRNLayer<Dtype>::CrossChannelForward_gpu(
   }
   cl_event eventPoint;
   size_t uiGlobal_Work_Size[]={n_threads};
-  size_t uiLocal_Work_Size[]={64};
+  size_t uiLocal_Work_Size[]={256};
   cl_int iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue, LFSkernel, 1, NULL,uiGlobal_Work_Size,uiLocal_Work_Size,0,NULL,&eventPoint);
   if(CL_SUCCESS!=iStatus){
      fprintf(stderr,"Failed to enqueue kernel\n");
@@ -343,7 +340,7 @@ Dtype LRNLayer<Dtype>::CrossChannelForward_gpu(
     fprintf(stderr,"Failed to Set Args\n");
   }
   size_t uiGlobal_Work_Size2[]={n_threads2};
-  size_t uiLocal_Work_Size2[]={64};
+  size_t uiLocal_Work_Size2[]={256};
   iStatus = clEnqueueNDRangeKernel(amdDevice.CommandQueue, LCOkernel, 1, NULL,uiGlobal_Work_Size2,uiLocal_Work_Size2,0,NULL,&eventPoint);
   if(CL_SUCCESS!=iStatus){
     fprintf(stderr,"Failed to enqueue kernel\n");

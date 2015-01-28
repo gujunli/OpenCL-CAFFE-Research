@@ -2,7 +2,7 @@
 
 #ifndef CAFFE_COMMON_HPP_
 #define CAFFE_COMMON_HPP_
-#include <CL/cl.h>
+#include <CL/cl_ext.h>
 #include <boost/shared_ptr.hpp>
 #include <cublas_v2.h>
 #include <cuda.h>
@@ -28,6 +28,7 @@ private:\
 
 // OpenCL: various checks for different function calls.
 
+#define use_sgemm_ex
 //#define Track_layer
 //#define Track_data_transfer
 //ifdef use_cpu_generator_dropout, use CPU generates radom number and copies to GPU

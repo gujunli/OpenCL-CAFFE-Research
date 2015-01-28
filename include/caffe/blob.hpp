@@ -65,6 +65,7 @@ class Blob {
   const Dtype* cpu_data() const;
   void set_cpu_data(Dtype* data);
   const Dtype* gpu_data() const;
+  const Dtype* gpu_cache_data() const;
   const Dtype* cpu_diff() const;
   const Dtype* gpu_diff() const;
   Dtype* mutable_cpu_data();
@@ -82,6 +83,7 @@ class Blob {
   // shared_ptr calls its destructor when reset with the = operator.
   void ShareData(const Blob& other);
   void ShareDiff(const Blob& other);
+  void set_data_layer(){data_->set_data_layer(); diff_->set_data_layer();};
 
  protected:
   shared_ptr<SyncedMemory> data_;

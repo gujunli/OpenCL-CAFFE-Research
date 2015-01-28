@@ -1,12 +1,12 @@
 // Copyright 2014 BVLC and contributors.
 
-#include <CL/cl.h>
 #include <cstring>
 #include <stdio.h>
 #include "caffe/common.hpp"
 #include "caffe/syncedmem.hpp"
 #include "caffe/util/ocl_util.hpp"
 
+#define CL_MEM_USE_PERSISTENT_MEM_AMD       (1 << 6)        // Alloc from GPU's CPU visible heap
 
 namespace caffe {
 
@@ -32,11 +32,17 @@ void SyncedMemory::ocl_setup() {
 }
 
 inline void SyncedMemory::to_cpu() {
+
   switch (head_) {
   case UNINITIALIZED:
     //allocate pre-pinned memory
     //pinned_buffer_ptr_
-    gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_ALLOC_HOST_PTR, size_, NULL, NULL);
+    if(data_layer_){
+      gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_USE_PERSISTENT_MEM_AMD, size_, NULL, NULL);
+    }
+    else{
+      gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_ALLOC_HOST_PTR, size_, NULL, NULL);
+    }
     cpu_ptr_ = clEnqueueMapBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, size_, 0, NULL, NULL, NULL);
     memset(cpu_ptr_, 0, size_);
     head_ = HEAD_AT_CPU;
@@ -124,6 +130,11 @@ void SyncedMemory::set_cpu_data(void* data) {
 const void* SyncedMemory::gpu_data() {
   to_gpu();
   return (const void*)gpu_ptr_;
+}
+
+const void* SyncedMemory::gpu_cache_data(){
+  to_cpu();
+  return (const void*)gpu_cache_ptr_;
 }
 
 void* SyncedMemory::mutable_cpu_data() {
