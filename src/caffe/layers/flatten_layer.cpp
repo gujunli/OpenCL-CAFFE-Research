@@ -28,11 +28,25 @@ Dtype FlattenLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   return Dtype(0.);
 }
 
+
+template <typename Dtype>
+Dtype FlattenLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
+  return Dtype(0.);
+}
+
 template <typename Dtype>
 void FlattenLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
   (*bottom)[0]->ShareDiff(*top[0]);
 }
+
+
+template <typename Dtype>
+void FlattenLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+}
+
 
 INSTANTIATE_CLASS(FlattenLayer);
 
