@@ -43,6 +43,18 @@ void BNLLLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }
 }
 
+template <typename Dtype>
+Dtype BNLLLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+    vector<Blob<Dtype>*>* top) {
+  return Dtype(0);
+}
+
+template <typename Dtype>
+void BNLLLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+    const bool propagate_down,
+    vector<Blob<Dtype>*>* bottom) {
+}
+
 
 INSTANTIATE_CLASS(BNLLLayer);
 

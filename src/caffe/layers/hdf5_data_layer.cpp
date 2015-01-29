@@ -115,11 +115,21 @@ Dtype HDF5DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   return Dtype(0.);
 }
 
+template <typename Dtype>
+Dtype HDF5DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
+  return Dtype(0.);
+}
+
+
 // The backward operations are dummy - they do not carry any computation.
 template <typename Dtype>
 void HDF5DataLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom) { }
 
+template <typename Dtype>
+void HDF5DataLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom) { }
 INSTANTIATE_CLASS(HDF5DataLayer);
 
 }  // namespace caffe

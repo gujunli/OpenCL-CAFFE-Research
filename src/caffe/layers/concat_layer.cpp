@@ -100,6 +100,17 @@ void ConcatLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }  // concat_dim_ is guaranteed to be 0 or 1 by SetUp.
 }
 
+template <typename Dtype>
+Dtype ConcatLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
+return Dtype(0.);
+}
+
+
+template <typename Dtype>
+void ConcatLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+}
 INSTANTIATE_CLASS(ConcatLayer);
 
 }  // namespace caffe

@@ -290,6 +290,10 @@ Dtype ImageDataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   return Dtype(0.);
 }
 
+template <typename Dtype>
+Dtype ImageDataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
+}
 INSTANTIATE_CLASS(ImageDataLayer);
 
 }  // namespace caffe

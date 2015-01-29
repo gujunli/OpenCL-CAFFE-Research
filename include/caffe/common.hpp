@@ -28,6 +28,7 @@ private:\
 
 // OpenCL: various checks for different function calls.
 
+#define use_sgemm_ex
 //#define Track_layer
 //#define Track_data_transfer
 //ifdef use_cpu_generator_dropout, use CPU generates radom number and copies to GPU

@@ -43,6 +43,18 @@ void TanHLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }
 }
 
+
+template <typename Dtype>
+Dtype TanHLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+    vector<Blob<Dtype>*>* top) {
+  return Dtype(0);
+}
+
+template <typename Dtype>
+void TanHLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+    const bool propagate_down,
+    vector<Blob<Dtype>*>* bottom) {
+}
 INSTANTIATE_CLASS(TanHLayer);
 
 }  // namespace caffe

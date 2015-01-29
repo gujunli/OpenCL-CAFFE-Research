@@ -158,27 +158,6 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
           reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), 0,
           (Dtype)1., top_data, (*top)[0]->offset(n));
     }
-#else
-//the following calls sgemm + CopyBuffer
-   //the code does not work correctly when group!=1
-     for (int g = 0; g < group_; ++g) {
-      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)sub_im2col, (size_t)(col_offset * g * sizeof(Dtype)), 0, col_offset *sizeof(Dtype), 0, NULL, NULL));
-
-      OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)weight, (cl_mem)sub_weight, (size_t)(weight_offset * g * sizeof(Dtype)), 0, weight_offset * sizeof(Dtype), 0, NULL, NULL));
-
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
-        (Dtype)1., (Dtype*)sub_weight, (Dtype*)sub_im2col,
-        (Dtype)0., (Dtype*)sub_top);
-    }
-
-    // third, add bias
-    if (bias_term_) {
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
-          N_, 1, (Dtype)1., this->blobs_[1]->gpu_data(),
-          reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()),
-          (Dtype)1., (Dtype*)sub_top);
-    }
-    OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)sub_top, (cl_mem)top_data, 0, (size_t)((*top)[0]->offset(n) * sizeof(Dtype)), ((*top)[0]->count()/num_)*sizeof(Dtype), 0, NULL, NULL));
 #endif
 
   }
@@ -269,26 +248,6 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
           (Dtype)1., weight,  weight_offset * g,
           top_diff, top[0]->offset(n) + top_offset * g,
           (Dtype)0., col_diff, col_offset * g);
-      }
-    }
-#else
-//the following calls sgemm + CopyBuffer
-   OCL_CHECK(clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff, sub_top_diff, (size_t)(top[0]->offset(n)*sizeof(Dtype)), 0, (top[0]->offset(1)*sizeof(Dtype)), 0, NULL, NULL));
-   //the code does not work correctly when group!=1
-   // gradient w.r.t. weight. Note that we will accumulate diffs.
-    for (int g = 0; g < group_; ++g) {
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
-        (Dtype)1., (Dtype*)sub_top_diff,
-        (Dtype*)col_data, (Dtype)1.,
-        (Dtype*)weight_diff);
-    }
-
-   if (propagate_down) {
-      for (int g = 0; g < group_; ++g) {
-        caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_,
-          (Dtype)1., weight,
-          (Dtype*)sub_top_diff,
-          (Dtype)0., col_diff);
       }
     }
 #endif

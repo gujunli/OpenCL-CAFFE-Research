@@ -59,6 +59,18 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
   caffe_scal(count, Dtype(1) / num, bottom_diff);
 }
 
+template <typename Dtype>
+Dtype SigmoidCrossEntropyLossLayer<Dtype>::Forward_gpu(
+    const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
+  return 0.;
+}
+
+template <typename Dtype>
+void SigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
+    const vector<Blob<Dtype>*>& top, const bool propagate_down,
+    vector<Blob<Dtype>*>* bottom) {
+}
+
 INSTANTIATE_CLASS(SigmoidCrossEntropyLossLayer);
 
 
