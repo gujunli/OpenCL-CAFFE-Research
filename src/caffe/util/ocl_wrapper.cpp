@@ -59,6 +59,30 @@ template void softmax_div_gpu<float>(cl_kernel Kernel, const int num, const int 
 template void softmax_div_gpu<double>(cl_kernel Kernel, const int num, const int dim, const double* scale, double* data);
 
 template <typename Dtype>
+Dtype softmax_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* prob_data, const Dtype* label, cl_mem d_loss){
+
+    OCL_CHECK(clSetKernelArg(Kernel, 0, sizeof(cl_mem),     (void*)&prob_data));
+    OCL_CHECK(clSetKernelArg(Kernel, 1, sizeof(cl_mem),  (void*)&d_loss));
+    OCL_CHECK(clSetKernelArg(Kernel, 2, sizeof(cl_mem),   (void*)&label));
+    OCL_CHECK(clSetKernelArg(Kernel, 3, sizeof(cl_int),   (void*)&num));
+    OCL_CHECK(clSetKernelArg(Kernel, 4, sizeof(cl_int),   (void*)&dim));
+    OCL_CHECK(clSetKernelArg(Kernel, 5, num * sizeof(Dtype),    NULL));
+
+    size_t globalws[1] = {num};
+    size_t localws[1] = {num};
+    OCL_CHECK (clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, globalws, localws, 0, NULL, NULL) );
+    void* h_loss = clEnqueueMapBuffer(amdDevice.CommandQueue, d_loss, CL_TRUE, CL_MAP_READ, 0, sizeof(Dtype), 0, NULL, NULL, NULL);
+    Dtype loss = *(Dtype*)h_loss;
+    clEnqueueUnmapMemObject(amdDevice.CommandQueue, d_loss, h_loss, 0, NULL, NULL);
+    
+    return loss;
+}
+
+// Explicit instantiation
+template float softmax_gpu<float>(cl_kernel Kernel, const int num, const int dim, const float* prob_data, const float* label, cl_mem d_loss);
+template double softmax_gpu<double>(cl_kernel Kernel, const int num, const int dim, const double* prob_data, const double* label, cl_mem d_loss);
+
+template <typename Dtype>
 void scal_gpu(cl_kernel Kernel, const int num, const Dtype alpha, Dtype* data){
     OCL_CHECK( clSetKernelArg(Kernel, 0, sizeof(cl_int), (void*)&num) );
     OCL_CHECK( clSetKernelArg(Kernel, 1, sizeof(Dtype), (void*)&alpha) );

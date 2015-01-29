@@ -30,6 +30,8 @@ void SoftmaxWithLossLayer<Dtype>::ocl_setup(){
    cl_int err=0;
    scal_kernel = clCreateKernel(amdDevice.Program, "scal_float", &err);
    diff_kernel = clCreateKernel(amdDevice.Program, "diff_float", &err);
+   softmax_kernel = clCreateKernel(amdDevice.Program, "softmax_float", &err);
+   d_loss = clCreateBuffer(amdDevice.Context, CL_MEM_ALLOC_HOST_PTR, sizeof(Dtype), NULL, NULL);
 }
 
 template <typename Dtype>
@@ -66,7 +68,21 @@ template <typename Dtype>
 Dtype SoftmaxWithLossLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
   // The forward pass computes the softmax prob values.
-  return Forward_cpu(bottom, top);
+  //return Forward_cpu(bottom, top);
+
+  softmax_bottom_vec_[0] = bottom[0];
+  softmax_layer_->Forward(softmax_bottom_vec_, &softmax_top_vec_);
+  const Dtype* prob_data = prob_.gpu_data();
+  const Dtype* label = bottom[1]->gpu_data();
+  const int num = prob_.num();
+  const int dim = prob_.count() / num;
+  
+  Dtype loss = softmax_gpu(softmax_kernel, num, dim, prob_data, label, d_loss);
+
+#ifdef Track_layer
+  LOG(WARNING) << "softmax with loss fp done";
+#endif 
+  return loss / num;
 }
 
 

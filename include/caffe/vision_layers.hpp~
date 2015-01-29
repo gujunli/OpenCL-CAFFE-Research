@@ -417,8 +417,7 @@ class SoftmaxWithLossLayer : public Layer<Dtype> {
   vector<Blob<Dtype>*> softmax_bottom_vec_;
   vector<Blob<Dtype>*> softmax_top_vec_;
  protected:
-   cl_kernel diff_kernel, scal_kernel, softmax_kernel;
-   cl_mem d_loss; 
+   cl_kernel diff_kernel, scal_kernel; 
 };
 
 /* SplitLayer

@@ -15,6 +15,9 @@ template <typename Dtype>
 void softmax_div_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* scale, Dtype* data);
 
 template <typename Dtype>
+Dtype softmax_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* prob_data, const Dtype* label, cl_mem d_loss);
+
+template <typename Dtype>
 void scal_gpu(cl_kernel Kernel, const int num, const Dtype alpha, Dtype* data);
 
 template <typename Dtype>
