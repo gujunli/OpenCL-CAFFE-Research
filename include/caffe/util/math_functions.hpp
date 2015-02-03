@@ -3,7 +3,7 @@
 #ifndef CAFFE_UTIL_MATH_FUNCTIONS_H_
 #define CAFFE_UTIL_MATH_FUNCTIONS_H_
 
-#include <cublas_v2.h>
+//#include <cublas_v2.h>
 #include <stdint.h>
 #include <cmath>  // for std::fabs and std::signbit
 

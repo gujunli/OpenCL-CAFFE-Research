@@ -2,7 +2,7 @@
 
 #ifndef CAFFE_LAYER_H_
 #define CAFFE_LAYER_H_
-
+#include <math.h>
 #include <vector>
 #include <fstream>
 #include "caffe/blob.hpp"
