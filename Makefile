@@ -107,14 +107,14 @@ TEST_ALL_BIN := $(TEST_BIN_DIR)/test_all.testbin
 ##############################
 # Derive include and lib directories
 ##############################
-CUDA_INCLUDE_DIR := $(CUDA_DIR)/include
-CUDA_LIB_DIR := $(CUDA_DIR)/lib64 $(CUDA_DIR)/lib
+#CUDA_INCLUDE_DIR := $(CUDA_DIR)/include
+#CUDA_LIB_DIR := $(CUDA_DIR)/lib64 $(CUDA_DIR)/lib
 
 INCLUDE_DIRS += $(BUILD_INCLUDE_DIR)
 INCLUDE_DIRS += ./src ./include $(CUDA_INCLUDE_DIR)
 LIBRARY_DIRS += $(CUDA_LIB_DIR)
-LIBRARIES := cudart cublas curand  \
-	pthread \
+#cudart cublas curand
+LIBRARIES := pthread \
 	glog protobuf leveldb snappy \
 	boost_system \
 	hdf5_hl hdf5 \

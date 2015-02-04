@@ -4,9 +4,9 @@
 #define CAFFE_COMMON_HPP_
 #include <CL/cl_ext.h>
 #include <boost/shared_ptr.hpp>
-#include <cublas_v2.h>
-#include <cuda.h>
-#include <curand.h>
+//#include <cublas_v2.h>
+//#include <cuda.h>
+//#include <curand.h>
 #include <clAmdBlas.h>
 #include <driver_types.h>  // cuda driver types
 #include <glog/logging.h>
@@ -55,20 +55,18 @@ private:\
 
 //#define OCL_memset();
 // CUDA: various checks for different function calls.
+/*
 #define CUDA_CHECK(condition) \
-  /* Code block avoids redefinition of cudaError_t error */ \
   do { \
     cudaError_t error = condition; \
     CHECK_EQ(error, cudaSuccess) << " " << cudaGetErrorString(error); \
   } while (0)
-
 #define CUBLAS_CHECK(condition) \
   do { \
     cublasStatus_t status = condition; \
     CHECK_EQ(status, CUBLAS_STATUS_SUCCESS) << " " \
       << caffe::cublasGetErrorString(status); \
   } while (0)
-
 #define CURAND_CHECK(condition) \
   do { \
     curandStatus_t status = condition; \
@@ -76,11 +74,11 @@ private:\
       << caffe::curandGetErrorString(status); \
   } while (0)
 
-// CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
        i < (n); \
        i += blockDim.x * gridDim.x)
+*/
 
 // CUDA: check for error after kernel execution and exit loudly if there is one.
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
@@ -133,10 +131,10 @@ class Caffe {
     }
     return *(Get().random_generator_);
   }
-  inline static cublasHandle_t cublas_handle() { return Get().cublas_handle_; }
-  inline static curandGenerator_t curand_generator() {
-    return Get().curand_generator_;
-  }
+  //inline static cublasHandle_t cublas_handle() { return Get().cublas_handle_; }
+  //inline static curandGenerator_t curand_generator() {
+  //  return Get().curand_generator_;
+  //}
 
   // Returns the mode: running on CPU or GPU.
   inline static Brew mode() { return Get().mode_; }
@@ -159,8 +157,8 @@ class Caffe {
   static void DeviceQuery();
 
  protected:
-  cublasHandle_t cublas_handle_;
-  curandGenerator_t curand_generator_;
+  //cublasHandle_t cublas_handle_;
+  //curandGenerator_t curand_generator_;
   shared_ptr<RNG> random_generator_;
 
   Brew mode_;
@@ -175,8 +173,8 @@ class Caffe {
 };
 
 // NVIDIA_CUDA-5.5_Samples/common/inc/helper_cuda.h
-const char* cublasGetErrorString(cublasStatus_t error);
-const char* curandGetErrorString(curandStatus_t error);
+//const char* cublasGetErrorString(cublasStatus_t error);
+//const char* curandGetErrorString(curandStatus_t error);
 
 // CUDA: thread number configuration.
 // Use 1024 threads per block, which requires cuda sm_2x or above,
