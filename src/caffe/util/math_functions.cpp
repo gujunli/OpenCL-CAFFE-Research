@@ -10,15 +10,6 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
 
-//#include <math_functions.h>  // CUDA's, not caffe's, for fabs, signbit
-//#include <thrust/device_vector.h>
-//#include <thrust/functional.h>  // thrust::plus
-//#include <thrust/reduce.h>
-//#include <cmath>
-//#include <cstdlib>
-//#include <cstring>
-
-
 static const clAmdBlasOrder order = clAmdBlasColumnMajor;
 #define pi 3.1415926
 
@@ -75,29 +66,33 @@ void caffe_gpu_gemm<double>(const CBLAS_TRANSPOSE TransA,
 }
 
 template <>
-void caffe_gpu_gemm_ex<float>(const CBLAS_TRANSPOSE TransA,
+cl_event caffe_gpu_gemm_ex<float>(const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
     const float alpha, const float* A,const int offA, const float* B, const int offB, const float beta, float* C, const int offC) {
   // Note that cublas follows fortran order.
+    cl_event event;
     clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
     clAmdBlasTranspose transB = (TransB == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
     int lda = (TransA == CblasNoTrans) ? K : M;
     int ldb = (TransB == CblasNoTrans) ? N : K;
     int ldc = N;
-    AMDBLAS_CHECK( clAmdBlasSgemmEx(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, offB, ldb, (cl_mem)A, offA, lda, (cl_float)beta, (cl_mem)C, offC, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, NULL) );
+    AMDBLAS_CHECK( clAmdBlasSgemmEx(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, offB, ldb, (cl_mem)A, offA, lda, (cl_float)beta, (cl_mem)C, offC, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, &event) );
+    return event;
 }
 
 template <>
-void caffe_gpu_gemm_ex<double>(const CBLAS_TRANSPOSE TransA,
+cl_event caffe_gpu_gemm_ex<double>(const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
     const double alpha, const double* A,const int offA, const double* B, const int offB, const double beta, double* C, const int offC) {
   // Note that cublas follows fortran order.
+    cl_event event;
     clAmdBlasTranspose transA = (TransA == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
     clAmdBlasTranspose transB = (TransB == CblasNoTrans)? clAmdBlasNoTrans : clAmdBlasTrans;
     int lda = (TransA == CblasNoTrans) ? K : M;
     int ldb = (TransB == CblasNoTrans) ? N : K;
     int ldc = N;
-    AMDBLAS_CHECK( clAmdBlasSgemmEx(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, offB, ldb, (cl_mem)A, offA, lda, (cl_float)beta, (cl_mem)C, offC, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, NULL) );
+    AMDBLAS_CHECK( clAmdBlasSgemmEx(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, offB, ldb, (cl_mem)A, offA, lda, (cl_float)beta, (cl_mem)C, offC, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, &event) );
+    return event;
 }
 
 template <>
@@ -142,24 +137,12 @@ template <>
 void caffe_gpu_gemv<float>(const CBLAS_TRANSPOSE TransA, const int M,
     const int N, const float alpha, const float* A, const float* x,
     const float beta, float* y) {
-  /*
-  cublasOperation_t cuTransA =
-      (TransA == CblasNoTrans) ? CUBLAS_OP_T : CUBLAS_OP_N;
-  CUBLAS_CHECK(cublasSgemv(Caffe::cublas_handle(), cuTransA, N, M, &alpha,
-      A, N, x, 1, &beta, y, 1));
-  */
 }
 
 template <>
 void caffe_gpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
     const int N, const double alpha, const double* A, const double* x,
     const double beta, double* y) {
-  /*
-  cublasOperation_t cuTransA =
-      (TransA == CblasNoTrans) ? CUBLAS_OP_T : CUBLAS_OP_N;
-  CUBLAS_CHECK(cublasDgemv(Caffe::cublas_handle(), cuTransA, N, M, &alpha,
-      A, N, x, 1, &beta, y, 1));
-  */
 }
 
 template <>
@@ -418,19 +401,6 @@ void caffe_rng_gaussian(const int n, const Dtype a,
     r[i] = variate_generator();
   }
   LOG(INFO) << "caffe_rng_guassian";
-  /*
-  //srand(37);
-  for (int i = 0; i < n; ++i) {
-    float u1 = ((float)rand())/RAND_MAX;
-    float u2 = ((float)rand())/RAND_MAX;
-    float x = sqrt(-2*log(u1))*sin(2*pi*u2);
-    r[i] = a + sigma*x;
-  }
-   for(int i=0; i<5; i++)
-   {
-      LOG(INFO)<<a<<"\t"<<sigma << "   rrrr[" <<i <<"] =" << r[i] ; 
-   }
-*/
 }
 
 template
@@ -520,12 +490,10 @@ double caffe_cpu_asum<double>(const int n, const double* x) {
 
 template <>
 void caffe_gpu_asum<float>(const int n, const float* x, float* y) {
-  //CUBLAS_CHECK(cublasSasum(Caffe::cublas_handle(), n, x, 1, y));
 }
 
 template <>
 void caffe_gpu_asum<double>(const int n, const double* x, double* y) {
-  //CUBLAS_CHECK(cublasDasum(Caffe::cublas_handle(), n, x, 1, y));
 }
 
 INSTANTIATE_CAFFE_CPU_UNARY_FUNC(sign);
@@ -549,228 +517,126 @@ void caffe_cpu_scale<double>(const int n, const double alpha, const double *x,
 template <>
 void caffe_gpu_scale<float>(const int n, const float alpha, const float *x,
                             float* y) {
-  //CUBLAS_CHECK(cublasScopy(Caffe::cublas_handle(), n, x, 1, y, 1));
-  //CUBLAS_CHECK(cublasSscal(Caffe::cublas_handle(), n, &alpha, y, 1));
 }
 
 template <>
 void caffe_gpu_scale<double>(const int n, const double alpha, const double *x,
                              double* y) {
-  //CUBLAS_CHECK(cublasDcopy(Caffe::cublas_handle(), n, x, 1, y, 1));
-  //CUBLAS_CHECK(cublasDscal(Caffe::cublas_handle(), n, &alpha, y, 1));
 }
 
 template <typename Dtype>
 __global__ void set_kernel(const int n, const Dtype alpha, Dtype* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] = alpha;
-  //}
 }
 
 template <>
 void caffe_gpu_set(const int N, const float alpha, float* Y) {
   if (alpha == 0) {
-    //CUDA_CHECK(cudaMemset(Y, 0, sizeof(float) * N));
     return;
   }
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //set_kernel<float><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, alpha, Y);
 }
 
 template <>
 void caffe_gpu_set(const int N, const double alpha, double* Y) {
   if (alpha == 0) {
-    //CUDA_CHECK(cudaMemset(Y, 0, sizeof(double) * N));
     return;
   }
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //set_kernel<double><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, alpha, Y);
 }
 
 template <typename Dtype>
 __global__ void add_scalar_kernel(const int n, const Dtype alpha, Dtype* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] += alpha;
-  //}
 }
 
 template <>
 void caffe_gpu_add_scalar(const int N, const float alpha, float* Y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //add_scalar_kernel<float><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, alpha, Y);
 }
 
 template <>
 void caffe_gpu_add_scalar(const int N, const double alpha, double* Y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //add_scalar_kernel<double><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, alpha, Y);
 }
 
 template <typename Dtype>
 __global__ void mul_kernel(const int n, const Dtype* a,
     const Dtype* b, Dtype* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] = a[index] * b[index];
-  //}
 }
 
 template <>
 void caffe_gpu_mul<float>(const int N, const float* a,
     const float* b, float* y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //mul_kernel<float><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, a, b, y);
 }
 
 template <>
 void caffe_gpu_mul<double>(const int N, const double* a,
     const double* b, double* y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //mul_kernel<double><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, a, b, y);
 }
 
 template <typename Dtype>
 __global__ void div_kernel(const int n, const Dtype* a,
     const Dtype* b, Dtype* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] = a[index] / b[index];
-  //}
 }
 
 template <>
 void caffe_gpu_div<float>(const int N, const float* a,
     const float* b, float* y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //div_kernel<float><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, a, b, y);
 }
 
 template <>
 void caffe_gpu_div<double>(const int N, const double* a,
     const double* b, double* y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //div_kernel<double><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, a, b, y);
 }
 
 template <typename Dtype>
 __global__ void powx_kernel(const int n, const Dtype* a,
     const Dtype alpha, Dtype* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] = pow(a[index], alpha);
-  //}
 }
 
 template <>
 void caffe_gpu_powx<float>(const int N, const float* a,
     const float alpha, float* y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //powx_kernel<float><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, a, alpha, y);
 }
 
 template <>
 void caffe_gpu_powx<double>(const int N, const double* a,
     const double alpha, double* y) {
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //powx_kernel<double><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-  //    N, a, alpha, y);
 }
 
-//DEFINE_AND_INSTANTIATE_GPU_UNARY_FUNC(sign, y[index] = (Dtype(0) < x[index])
-//                                      - (x[index] < Dtype(0)));
-//DEFINE_AND_INSTANTIATE_GPU_UNARY_FUNC(fabs, y[index] = fabs(x[index]));
 
 __global__ void popc_kernel(const int n, const float* a,
     const float* b, uint8_t* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] = __popc(static_cast<uint32_t>(a[index]) ^
-  //                    static_cast<uint32_t>(b[index]));
-  //}
 }
 
 __global__ void popcll_kernel(const int n, const double* a,
     const double* b, uint8_t* y) {
-  //CUDA_KERNEL_LOOP(index, n) {
-  //  y[index] = __popcll(static_cast<uint64_t>(a[index]) ^
-  //                    static_cast<uint64_t>(b[index]));
-  //}
 }
 
 template <>
 uint32_t caffe_gpu_hamming_distance<float>(const int n, const float* x,
                                   const float* y) {
-  // TODO: Fix caffe_gpu_hamming_distance (see failing unit test
-  // TestHammingDistanceGPU in test_math_functions.cpp).
-  //NOT_IMPLEMENTED;
-  //thrust::device_vector<uint8_t> popcounts(n);
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //popc_kernel<<<CAFFE_GET_BLOCKS(n), CAFFE_CUDA_NUM_THREADS>>>(
-  //    n, x, y, thrust::raw_pointer_cast(popcounts.data()));
-  //return thrust::reduce(popcounts.begin(), popcounts.end(),
-  //                     (uint32_t) 0, thrust::plus<uint32_t>());
 }
 
 template <>
 uint32_t caffe_gpu_hamming_distance<double>(const int n, const double* x,
                                    const double* y) {
-  // TODO: Fix caffe_gpu_hamming_distance (see failing unit test
-  // TestHammingDistanceGPU in test_math_functions.cpp).
-  //NOT_IMPLEMENTED;
-  //thrust::device_vector<uint8_t> popcounts(n);
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  //popcll_kernel<<<CAFFE_GET_BLOCKS(n), CAFFE_CUDA_NUM_THREADS>>>(
-  //    n, x, y, thrust::raw_pointer_cast(popcounts.data()));
-  //return thrust::reduce(popcounts.begin(), popcounts.end(),
-                        /* NOLINT_NEXT_LINE(build/include_what_you_use) */
-  //                      (uint32_t) 0, thrust::plus<uint32_t>());
 }
 
 void caffe_gpu_rng_uniform(const int n, unsigned int* r) {
-  //CURAND_CHECK(curandGenerate(Caffe::curand_generator(), r, n));
 }
 
 template <>
 void caffe_gpu_rng_uniform<float>(const int n, const float a, const float b,
                                   float* r) {
-  //CURAND_CHECK(curandGenerateUniform(Caffe::curand_generator(), r, n));
-  //const float range = b - a;
-  //if (range != static_cast<float>(1)) {
-  //  caffe_gpu_scal(n, range, r);
-  //}
-  //if (a != static_cast<float>(0)) {
-  //  caffe_gpu_add_scalar(n, a, r);
-  //}
 }
 template <>
 void caffe_gpu_rng_uniform<double>(const int n, const double a, const double b,
                                    double* r) {
-  //CURAND_CHECK(curandGenerateUniformDouble(Caffe::curand_generator(), r, n));
-  //const double range = b - a;
-  //if (range != static_cast<double>(1)) {
-  //  caffe_gpu_scal(n, range, r);
-  //}
-  //if (a != static_cast<double>(0)) {
-  //  caffe_gpu_add_scalar(n, a, r);
-  //}
 }
 
 template <>
 void caffe_gpu_rng_gaussian(const int n, const float mu, const float sigma,
                             float* r) {
-  //CURAND_CHECK(
-  //    curandGenerateNormal(Caffe::curand_generator(), r, n, mu, sigma));
 }
 
 template <>
 void caffe_gpu_rng_gaussian(const int n, const double mu, const double sigma,
                             double* r) {
-  //CURAND_CHECK(
-  //    curandGenerateNormalDouble(Caffe::curand_generator(), r, n, mu, sigma));
 }
 }  // namespace caffe

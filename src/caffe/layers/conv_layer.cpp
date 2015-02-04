@@ -1,13 +1,13 @@
 // Copyright 2014 BVLC and contributors.
 
 #include <vector>
-
 #include "caffe/layer.hpp"
 #include "caffe/vision_layers.hpp"
 #include "caffe/util/im2col.hpp"
 #include "caffe/filler.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/ocl_util.hpp"
+#include <CL/cl.h>
 
 namespace caffe {
 template <typename Dtype>
@@ -117,12 +117,12 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
   int top_offset = M_ * N_;
+  cl_event profEvent;
   for (int n = 0; n < num_; ++n) {
     // First, im2col
     im2col_gpu(im2col_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
                        width_, kernel_size_, pad_, stride_, col_data, 0);
  
-//the following calls sgemmEx
     for (int g = 0; g < group_; ++g) {
       caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
         (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
@@ -131,10 +131,12 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 
     // third, add bias
     if (bias_term_) {
-      caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
+      profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
           N_, 1, (Dtype)1., this->blobs_[1]->gpu_data(), 0,
           reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), 0,
           (Dtype)1., top_data, (*top)[0]->offset(n));
+      int ID = 0;
+      clSetEventCallback(profEvent, CL_COMPLETE, &eventCallback, (void*)ID);
     }
 
   }
@@ -202,7 +204,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
   int top_offset = M_ * N_;
-  
+
   for (int n = 0; n < num_; ++n) {
     // since we saved memory in the forward pass by not storing all col data,
     // we will need to recompute them.
