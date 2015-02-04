@@ -74,7 +74,7 @@ cl_int Device::Init(){
     }
 
     //Create CommandQueue
-    CommandQueue = clCreateCommandQueue(Context, pDevices[0], 0, NULL);
+    CommandQueue = clCreateCommandQueue(Context, pDevices[0], CL_QUEUE_PROFILING_ENABLE, NULL);
     if(NULL == CommandQueue){
         fprintf(stderr,"Err: Failed to Create Commandqueue\n");
         return 0;
