@@ -396,5 +396,38 @@ void caffe_gpu_bernoulli(cl_kernel ker_rand, int* a, const unsigned int n, Dtype
 template void caffe_gpu_bernoulli<float>(cl_kernel kernel, int* a, const unsigned int n, float inf, float sup, float threshold);
 template void caffe_gpu_bernoulli<double>(cl_kernel kernel, int* a, const unsigned int n, double inf, double sup, double threshold);
 
+
+template <typename Dtype>
+void opttrans(cl_kernel Kernel, const Dtype* data_im, const int im_offset, const int channels,
+    const int height, const int width, Dtype* data_opt, const int opt_offset, const int optnum) {
+
+    int num_kernels = channels * height * width * optnum;
+  // To avoid involving atomic operations, we will launch one kernel per
+  // bottom dimension, and then in the kernel add up the top dimensions.
+  // NOLINT_NEXT_LINE(whitespace/operatiors)
+
+    cl_int ret;
+    ret=clSetKernelArg(Kernel,0,sizeof(cl_int),(void*)&num_kernels);
+    ret|=clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&data_im);
+    ret|=clSetKernelArg(Kernel,2,sizeof(cl_int),(void*)&im_offset);
+    ret|=clSetKernelArg(Kernel,3,sizeof(cl_int),(void*)&height);
+    ret|=clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&width);
+    ret|=clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&channels);
+    ret|=clSetKernelArg(Kernel,6,sizeof(cl_mem),(void*)&data_opt);
+    ret|=clSetKernelArg(Kernel,7,sizeof(cl_int),(void*)&opt_offset);
+    ret|=clSetKernelArg(Kernel,8,sizeof(cl_int),(void*)&optnum);
+    OCL_CHECK(ret);
+
+    size_t uiGlobal_Work_Size[] = {num_kernels};
+    size_t uiLocal_Work_Size[] = {256};
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, uiGlobal_Work_Size, uiLocal_Work_Size, 0, NULL, NULL) );
+}
+
+template void opttrans<float>(cl_kernel Kernel, const float* data_im, const int im_offset, const int channels,
+    const int height, const int width, float* data_opt, const int opt_offset, const int optnum);
+template void opttrans<double>(cl_kernel Kernel, const double* data_im, const int im_offset, const int channels,
+    const int height, const int width, double* data_opt, const int opt_offset, const int optnum);
+
+
 }  // namespace caffe
 

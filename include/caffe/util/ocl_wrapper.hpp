@@ -9,6 +9,10 @@ template <typename Dtype>
 void transform_gpu(cl_kernel Kernel, Dtype* src, Dtype* dst, const int top_offset, const int N_, const int M_, const int packing_num);
 
 template <typename Dtype>
+void opttrans(cl_kernel Kernel, const Dtype* data_im, const int im_offset, const int channels,
+    const int height, const int width, Dtype* data_opt, const int opt_offset, const int optnum);
+
+template <typename Dtype>
 void get_max_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* bottom_data, Dtype* scale_data);
 
 template <typename Dtype>

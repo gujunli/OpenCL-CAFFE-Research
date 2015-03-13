@@ -17,16 +17,15 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
   im2col_kernel = clCreateKernel(amdDevice.Program,"im2colfloat", NULL);
   col2im_kernel = clCreateKernel(amdDevice.Program,"col2imfloat", NULL);
   oclmem_kernel = clCreateKernel(amdDevice.Program, "oclmemfloat", NULL);
-  im2col_16_kernel = clCreateKernel(amdDevice.Program, "im2col_16float", NULL);
+  im2col_opt_kernel = clCreateKernel(amdDevice.Program, "im2col_optfloat", NULL);
+  col2im_opt_kernel = clCreateKernel(amdDevice.Program, "col2im_optfloat", NULL);
+  opttrans_kernel = clCreateKernel(amdDevice.Program, "opttransfloat", NULL);
   ocl_Kernel_im2colfloat = clCreateKernel(amdDevice.Program,"im2colfloat_yuan",NULL);
   ocl_Kernel_col2imfloat = clCreateKernel(amdDevice.Program,"col2imfloat_yuan",NULL);
   ocl_Kernel_transpose = clCreateKernel(amdDevice.Program,"transposefloat",NULL);
   ocl_Kernel_transform = clCreateKernel(amdDevice.Program,"transformfloat",NULL);
   subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
   transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
-  subTopMem2 = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
-  subColPack = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
-
 }
 
 
@@ -40,7 +39,8 @@ template <typename Dtype>
   OCL_CHECK( clReleaseKernel(ocl_Kernel_transform) );
   OCL_CHECK( clReleaseKernel(ocl_Kernel_im2colfloat) );
   OCL_CHECK( clReleaseKernel(ocl_Kernel_col2imfloat) );
-  OCL_CHECK( clReleaseKernel(im2col_16_kernel) );
+  OCL_CHECK( clReleaseKernel(im2col_opt_kernel) );
+  OCL_CHECK( clReleaseKernel(col2im_opt_kernel) );
   //}
 }
 
@@ -150,8 +150,8 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     col_offset = K_ * N_ * opt_num2;  
     //step1: packed im2col, col_size = (K_ * group_ ) * N_
     //this should be opt_num2 images packing together.
-    im2col_16_gpu(im2col_16_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
-                       width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0);
+    im2col_opt_gpu(im2col_opt_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
+                       width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0, opt_num2);
    
     //step 2: sgemm: Top (subTopMem) = weight * col_data
     cl_command_queue Queue;
@@ -168,7 +168,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        //printf("transA = No, transB = No, M_=%d, N_=%d, K_=%d\n", N_*opt_num2, M_, K_);
        //int ID = 0;
-    //   clSetEventCallback(prof_event, CL_COMPLETE, &eventCallback, (void*)ID);
+       //clSetEventCallback(prof_event, CL_COMPLETE, &eventCallback, (void*)ID);
        }
 
     //step 3: tranform
@@ -246,6 +246,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   }
 
   printf("using packing scheme \n");
+  // the following are the original values without packing scheme
   int M_org = M_ * group_;
   int K_org = K_ * group_;
   int col_offset = K_ * N_;
@@ -253,23 +254,23 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   int weight_offset = M_ * K_;
   int opt_num2 = global_packing_N;
   int g = 0;
-for (int n = 0; n < num_; n += opt_num2) {
+  for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
     /*col_offset is the offset for sgemm, including packing and groups
     for the last loop, may not be 16. for correctness, col_offset, weight_offset, top_offset will all be different*/
-    top_offset = M_ * N_ * opt_num2;
-    col_offset = K_ * N_ * opt_num2;
+    top_offset = M_ * (N_ * opt_num2);
+    col_offset = K_ * (N_ * opt_num2);
     //step1: packed im2col, col_size = (K_ * group_ ) * N_
     //this should be opt_num2 images packing together.
-    im2col_16_gpu(im2col_16_kernel, bottom_data, (*bottom)[0]->offset(n), channels_, height_,
-                       width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0);
+    im2col_opt_gpu(im2col_opt_kernel, bottom_data, (*bottom)[0]->offset(n), channels_, height_,
+                       width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0, opt_num2);
 
     //step 2: transform top[n] into shoulder by shoulder, right now i cheated by just copying the data over. without re-organize
-    clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)top_diff, subTopMem2, top[0]->offset(n) * sizeof(Dtype), 0, M_org *N_*opt_num2*sizeof(Dtype), 1, NULL, NULL);
-//step 2: sgemm: Top (subTopMem) = weight * col_data
+    int height_top = M_ * group_, width_top = N_;
+    opttrans(opttrans_kernel, top_diff, top[0]->offset(n), 1, height_top, width_top, (Dtype*)subTopMem, 0, opt_num2);
+    //step 3: sgemm: Top (subTopMem) = weight * col_data
     cl_command_queue Queue;
     cl_event prof_event;
-
     for(g = 0; g < group_; ++g) {
      #ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
@@ -280,12 +281,12 @@ for (int n = 0; n < num_; n += opt_num2) {
       prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
       //caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasTrans, M_, K_, N_ * opt_num2,
       //  (Dtype)1., top_diff, top[0]->offset(n),
-        (Dtype)1., (Dtype*)subTopMem2, 0,
+        (Dtype)1., (Dtype*)subTopMem, top_offset * g,
         (Dtype*)transMem, col_offset * g, (Dtype)1.,
         (Dtype*)weight_diff, weight_offset * g);
     }
 
-//step3
+   //step4:
    if (propagate_down) {
       for (g = 0; g < group_; ++g) {
      #ifdef multiQ
@@ -297,15 +298,15 @@ for (int n = 0; n < num_; n += opt_num2) {
        prof_event =  caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_*opt_num2, M_,
           (Dtype)1., weight,  weight_offset * g,
           //top_diff, top[0]->offset(n) + top_offset * g,
-          (Dtype*)subTopMem2, top_offset * g,
-          (Dtype)0., (Dtype*)subColPack, col_offset * g);
+          (Dtype*)subTopMem, top_offset * g,
+          (Dtype)0., (Dtype*)transMem, col_offset * g);
       }
     }
-//step4
-for (int z = 0; z < opt_num2; z++)
-      col2im_gpu(col2im_kernel, (Dtype*)subColPack, K_org*N_*z, channels_, height_, width_, kernel_size_,   pad_, 
-         stride_, bottom_diff, (*bottom)[0]->offset(n+z));
-}
+    //step5: col2im
+       col2im_gpu_opt(col2im_opt_kernel, (Dtype*)transMem, 0, channels_, height_, width_, kernel_size_, pad_,
+                  stride_, bottom_diff, (*bottom)[0]->offset(n), opt_num2);
+   }
+
 #ifdef Track_layer
     LOG(WARNING) << "conv bp done";
 #endif
