@@ -107,7 +107,7 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     for(int i=0; i < count; i++){
     count0 += (mask_check[i] ==0); 
     count1 += (mask_check[i] ==1); }
-    LOG(INFO) << "threshold=" <<threshold_<< " 0:1 ratio=" << count0 << " : " << count1;
+    //LOG(INFO) << "threshold=" <<threshold_<< " 0:1 ratio=" << count0 << " : " << count1;
 #endif
   
   } else {

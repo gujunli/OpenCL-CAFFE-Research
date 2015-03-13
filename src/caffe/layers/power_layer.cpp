@@ -48,7 +48,7 @@ template <typename Dtype>
 Dtype PowerLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 //Dtype PowerLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
-  LOG(INFO) << "Power layer fp cpu";
+  //LOG(INFO) << "Power layer fp cpu";
   Dtype* top_data = (*top)[0]->mutable_cpu_data();
   const int count = bottom[0]->count();
   // Special case where we can ignore the input: scale or power is 0.

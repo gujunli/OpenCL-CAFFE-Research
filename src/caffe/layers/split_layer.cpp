@@ -43,7 +43,7 @@ template <typename Dtype>
 Dtype SplitLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 //Dtype SplitLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
-  LOG(INFO) << "Split Layer fp_GPU";
+ // LOG(INFO) << "Split Layer fp_GPU";
   for (int i = 0; i < top->size(); ++i) {
     (*top)[i]->ShareData(*bottom[0]);
   }
@@ -71,7 +71,7 @@ template <typename Dtype>
 void SplitLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 //void SplitLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
-  LOG(INFO) << "Split Layer bp_GPU";
+  //LOG(INFO) << "Split Layer bp_GPU";
   if (propagate_down) {
     (*bottom)[0]->ShareDiff(*top[0]);
     // Add remaining top blob diffs.

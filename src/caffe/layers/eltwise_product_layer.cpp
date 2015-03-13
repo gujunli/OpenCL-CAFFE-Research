@@ -84,7 +84,7 @@ template <typename Dtype>
 Dtype EltwiseProductLayer<Dtype>::Forward_gpu(
 //Dtype EltwiseProductLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
-  LOG(INFO) << "EltwiseProductLAyer fp_GPU";
+  //LOG(INFO) << "EltwiseProductLAyer fp_GPU";
   const int count = (*top)[0]->count();
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   caffe_gpu_mul(mul_kernel, count, bottom[0]->gpu_data(), bottom[1]->gpu_data(), top_data);
@@ -98,7 +98,7 @@ template <typename Dtype>
 void EltwiseProductLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 //void EltwiseProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
-  LOG(INFO) << "EltwiseProductLAyer bp_GPU";
+  //LOG(INFO) << "EltwiseProductLAyer bp_GPU";
   if (propagate_down) {
     const int count = top[0]->count();
     const Dtype* top_data = top[0]->gpu_data();

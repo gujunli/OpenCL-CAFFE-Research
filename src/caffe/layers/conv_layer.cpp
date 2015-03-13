@@ -130,7 +130,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   cl_event profEvent;
 
-  printf("using packing scheme \n");
+  //printf("using packing scheme \n");
   /*int the packing schme, M, K stay the same. N multiplies by opt_num becomes much bigger N'. 
    N' is the M in sgemm call.*/ 
 
@@ -245,7 +245,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     }
   }
 
-  printf("using packing scheme \n");
+  //printf("using packing scheme \n");
   // the following are the original values without packing scheme
   int M_org = M_ * group_;
   int K_org = K_ * group_;
