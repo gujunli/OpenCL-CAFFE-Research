@@ -1,7 +1,7 @@
 // Copyright 2014 BVLC and contributors.
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <cuda_runtime.h>
+//#include <cuda_runtime.h>
 
 #include "caffe/common.hpp"
 #include "caffe/util/benchmark.hpp"

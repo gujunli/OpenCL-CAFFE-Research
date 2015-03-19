@@ -5,7 +5,7 @@
 #include <CL/cl_ext.h>
 #include <boost/shared_ptr.hpp>
 #include <clAmdBlas.h>
-#include <driver_types.h>  // cuda driver types
+//#include <driver_types.h>  // cuda driver types
 #include <glog/logging.h>
 #include "caffe/device.hpp"
 // Disable the copy and assignment operator for a class.

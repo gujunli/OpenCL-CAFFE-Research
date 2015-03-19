@@ -5,7 +5,7 @@
 // Usage:
 //    train_net net_proto_file solver_proto_file [resume_point_file]
 
-//#include <cuda_runtime.h>
+#include <cuda_runtime.h>
 
 #include <cstring>
 
@@ -14,7 +14,7 @@
 using namespace caffe;  // NOLINT(build/namespaces)
 
 int main(int argc, char** argv) {
-  FLAGS_log_dir = "./log/";
+  FLAGS_log_dir = "./";
   ::google::InitGoogleLogging(argv[0]);
   if (argc < 2 || argc > 3) {
     LOG(ERROR) << "Usage: train_net solver_proto_file [resume_point_file]";

@@ -1,7 +1,7 @@
 // Copyright 2014 BVLC and contributors.
 
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
+//#include <cuda_runtime.h>
+//#include <cublas_v2.h>
 
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"

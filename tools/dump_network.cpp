@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "cuda_runtime.h"
+//#include "cuda_runtime.h"
 #include "fcntl.h"
 #include "google/protobuf/text_format.h"
 

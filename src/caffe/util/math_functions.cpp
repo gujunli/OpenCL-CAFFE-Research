@@ -2,7 +2,7 @@
 
 #include <boost/math/special_functions/next.hpp>
 #include <boost/random.hpp>
-#include <cublas_v2.h>
+//#include <cublas_v2.h>
 
 #include <limits>
 
@@ -525,7 +525,7 @@ void caffe_gpu_scale<double>(const int n, const double alpha, const double *x,
 }
 
 template <typename Dtype>
-__global__ void set_kernel(const int n, const Dtype alpha, Dtype* y) {
+void set_kernel(const int n, const Dtype alpha, Dtype* y) {
 }
 
 template <>
@@ -543,7 +543,7 @@ void caffe_gpu_set(const int N, const double alpha, double* Y) {
 }
 
 template <typename Dtype>
-__global__ void add_scalar_kernel(const int n, const Dtype alpha, Dtype* y) {
+void add_scalar_kernel(const int n, const Dtype alpha, Dtype* y) {
 }
 
 template <>
@@ -555,7 +555,7 @@ void caffe_gpu_add_scalar(const int N, const double alpha, double* Y) {
 }
 
 template <typename Dtype>
-__global__ void mul_kernel(const int n, const Dtype* a,
+void mul_kernel(const int n, const Dtype* a,
     const Dtype* b, Dtype* y) {
 }
 
@@ -570,7 +570,7 @@ void caffe_gpu_mul<double>(const int N, const double* a,
 }
 
 template <typename Dtype>
-__global__ void div_kernel(const int n, const Dtype* a,
+void div_kernel(const int n, const Dtype* a,
     const Dtype* b, Dtype* y) {
 }
 
@@ -585,7 +585,7 @@ void caffe_gpu_div<double>(const int N, const double* a,
 }
 
 template <typename Dtype>
-__global__ void powx_kernel(const int n, const Dtype* a,
+void powx_kernel(const int n, const Dtype* a,
     const Dtype alpha, Dtype* y) {
 }
 
@@ -600,11 +600,11 @@ void caffe_gpu_powx<double>(const int N, const double* a,
 }
 
 
-__global__ void popc_kernel(const int n, const float* a,
+void popc_kernel(const int n, const float* a,
     const float* b, uint8_t* y) {
 }
 
-__global__ void popcll_kernel(const int n, const double* a,
+void popcll_kernel(const int n, const double* a,
     const double* b, uint8_t* y) {
 }
 
