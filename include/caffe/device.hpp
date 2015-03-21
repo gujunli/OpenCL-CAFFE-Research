@@ -18,6 +18,7 @@ public:
     cl_device_id * DeviceIDs;
     cl_context Context;
     cl_command_queue CommandQueue;
+    cl_command_queue CommandQueue_helper;
     cl_program Program; 
     clAmdBlasOrder col;
     clAmdBlasOrder row;

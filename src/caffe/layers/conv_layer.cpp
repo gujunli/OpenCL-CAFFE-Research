@@ -122,13 +122,36 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     // First, im2col
     im2col_gpu(im2col_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
                        width_, kernel_size_, pad_, stride_, col_data, 0);
- 
-    for (int g = 0; g < group_; ++g) {
-      caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
+   
+   // for (int g = 0; g < group_; ++g) {
+#ifdef pipeline
+    int g = 0;
+    if(group_ == 1){
+      profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
+	(Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
+        (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
+    //}
+    }else if (group_ == 2){
+     //printf("cmdq: q1 %d, d2 %d\n", amdDevice.CommandQueue, amdDevice.CommandQueue_helper);
+    g = 0;
+      caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue), CblasNoTrans, CblasNoTrans, M_, N_, K_,
         (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
         (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
-    }
-
+ 
+    //printf("group =0 done \n");
+    g = 1;
+      caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue_helper), CblasNoTrans, CblasNoTrans, M_, N_, K_,
+        (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
+        (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
+    //printf("end: group =1 \n");
+     }
+#else
+ for (int g = 0; g < group_; ++g) {
+   profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
+        (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
+        (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
+  }
+#endif
     // third, add bias
     if (bias_term_) {
       profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
@@ -211,8 +234,49 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     im2col_gpu(im2col_kernel, bottom_data, (*bottom)[0]->offset(n), channels_, height_,
                       width_, kernel_size_, pad_, stride_, col_data, 0);
 
+#ifdef pipeline
     // gradient w.r.t. weight. Note that we will accumulate diffs.
-    for (int g = 0; g < group_; ++g) {
+     int g = 0;
+     if(group_ == 1){
+      caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
+        (Dtype)1., top_diff, top[0]->offset(n),
+        (Dtype*)col_data, col_offset * g, (Dtype)1.,
+        (Dtype*)weight_diff, weight_offset * g);
+     }else if (group_ == 2){
+      g = 0;
+      caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue), CblasNoTrans, CblasTrans, M_, K_, N_,
+        (Dtype)1., top_diff, top[0]->offset(n),
+        (Dtype*)col_data, col_offset * g, (Dtype)1.,
+        (Dtype*)weight_diff, weight_offset * g);
+      g = 1;
+      caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue_helper), CblasNoTrans, CblasTrans, M_, K_, N_,
+        (Dtype)1., top_diff, top[0]->offset(n),
+        (Dtype*)col_data, col_offset * g, (Dtype)1.,
+        (Dtype*)weight_diff, weight_offset * g);
+    }
+
+   if (propagate_down) {
+     int g = 0;
+     if(group_ == 1){
+        caffe_gpu_gemm_ex<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_,
+          (Dtype)1., weight,  weight_offset * g,
+          top_diff, top[0]->offset(n) + top_offset * g,
+          (Dtype)0., col_diff, col_offset * g);
+     }else if (group_ == 2){
+        g = 0;
+        caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue), CblasTrans, CblasNoTrans, K_, N_, M_,
+          (Dtype)1., weight,  weight_offset * g,
+          top_diff, top[0]->offset(n) + top_offset * g,
+          (Dtype)0., col_diff, col_offset * g);
+        g = 1;
+        caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue_helper), CblasTrans, CblasNoTrans, K_, N_, M_,
+          (Dtype)1., weight,  weight_offset * g,
+          top_diff, top[0]->offset(n) + top_offset * g,
+          (Dtype)0., col_diff, col_offset * g);
+      }
+    }
+#else
+for (int g = 0; g < group_; ++g) {
       caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
         (Dtype)1., top_diff, top[0]->offset(n),
         (Dtype*)col_data, col_offset * g, (Dtype)1.,
@@ -227,7 +291,8 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
           (Dtype)0., col_diff, col_offset * g);
       }
     }
-      // col2im back to the data
+#endif
+    // col2im back to the data
       col2im_gpu(col2im_kernel, col_diff, 0, channels_, height_, width_, kernel_size_, pad_,
           stride_, bottom_diff, (*bottom)[0]->offset(n));
     }

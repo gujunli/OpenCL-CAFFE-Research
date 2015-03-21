@@ -111,7 +111,8 @@ Dtype DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 #endif
   
   } else {
-    OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)top_data, 0, 0, count*sizeof(Dtype), 0, NULL, NULL) );
+         if(bottom_data != top_data)
+           OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)bottom_data, (cl_mem)top_data, 0, 0, count*sizeof(Dtype), 0, NULL, NULL) );
   }
   return Dtype(0);
 }

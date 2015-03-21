@@ -27,6 +27,7 @@ private:\
 
 #define use_sgemm_ex
 #define use_cpu_generator_dropout
+//#define pipeline
 
 #define OCL_CHECK(condition) \
   do { \

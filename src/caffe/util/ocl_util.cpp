@@ -60,7 +60,7 @@ void eventCallback(cl_event event, cl_int event_status, void * user_data){
     err = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_QUEUED, sizeof(cl_ulong), &ev_start_time, NULL);
     err = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
     run_time = (double)(ev_end_time - ev_start_time);
-    printf("The kernel's running time is %f\n", run_time * 1.0e-9);
+    //printf("The kernel's running time is %f\n", run_time * 1.0e-9);
 }
 
 

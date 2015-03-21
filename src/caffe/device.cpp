@@ -15,6 +15,7 @@ Device::~Device(){
      free(DeviceIDs);
      clReleaseProgram(Program);
      clReleaseCommandQueue(CommandQueue);
+     clReleaseCommandQueue(CommandQueue_helper);
      clReleaseContext(Context);
      LOG(INFO) << "device destructor";
 }
@@ -65,6 +66,9 @@ cl_int Device::Init(){
         pDevices = (cl_device_id *)malloc(uiNumDevices * sizeof(cl_device_id));
         clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, uiNumDevices, pDevices, NULL);
     }
+   
+    //to be improved, yibing
+    pDevices[0] = pDevices[1];
 
     //Create Context
     Context = clCreateContext(NULL, 1, pDevices, NULL, NULL, NULL);
@@ -75,7 +79,8 @@ cl_int Device::Init(){
 
     //Create CommandQueue
     CommandQueue = clCreateCommandQueue(Context, pDevices[0], CL_QUEUE_PROFILING_ENABLE, NULL);
-    if(NULL == CommandQueue){
+    CommandQueue_helper = clCreateCommandQueue(Context, pDevices[0], CL_QUEUE_PROFILING_ENABLE, NULL);
+    if(NULL == CommandQueue || NULL == CommandQueue_helper){
         fprintf(stderr,"Err: Failed to Create Commandqueue\n");
         return 0;
     }
