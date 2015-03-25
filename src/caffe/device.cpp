@@ -48,27 +48,65 @@ cl_int Device::Init(){
     //printf("%s %s\n", platformName, openclVersion);
   
     GetDeviceInfo();
-    
-    //Get Device Information
-    clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
-    cl_uint uiNumDevices = numDevices;
     cl_device_id * pDevices;
-    if(0 == uiNumDevices){
-        //clGetDeviceIDs(PlatformIDs[0],CL_DEVICE_TYPE_CPU,0,NULL,&uiNumDevices);
+    cl_uint uiNumDevices;
+    cl_bool unified_memory = false;
+    switch(Caffe::mode()) {
+    case Caffe::GPU:
+         //choose_gpu();
+      clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
+      uiNumDevices = numDevices;
+      if(0 == uiNumDevices){
+        LOG(FATAL) << "Err: No GPU devices";
+       }
+       else{
+        pDevices = (cl_device_id *)malloc(uiNumDevices * sizeof(cl_device_id));
+        OCL_CHECK(clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, uiNumDevices, pDevices, &uiNumDevices));
+        for (int i = 0; i < (int)uiNumDevices; i++){
+          clGetDeviceInfo(pDevices[i], CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(cl_bool), &unified_memory, NULL);
+          if(unified_memory) //skip iGPU
+            continue;
+          else {//we pick the first GPU we found
+           pDevices[0] = pDevices[i];
+            }
+         }
+       }
+         LOG(INFO) << "picked device type: GPU";
+         break;
+    case Caffe::CPU:
+         //choose_cpu();
+         clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_CPU, 0, NULL, &numDevices);
+         uiNumDevices = numDevices;
         if(0 == uiNumDevices){
-            fprintf(stderr, "Err:There is no any CPU or GPU device\n");
-            return 0;
-        }
-        pDevices = (cl_device_id *)malloc(uiNumDevices * sizeof(cl_device_id));
-        clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_CPU, uiNumDevices, pDevices, NULL);
+          LOG(FATAL) << "Err: No CPU devices";
+          }
+         pDevices = (cl_device_id *)malloc(uiNumDevices * sizeof(cl_device_id));
+         OCL_CHECK( clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_CPU, 1, pDevices, NULL) );
+         LOG(INFO) << "picked device type: CPU";
+         break;
+    case Caffe::APU:
+        clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
+        uiNumDevices = numDevices;
+        if(0 == uiNumDevices){
+          LOG(FATAL) << "Err: No GPU devices";
+         }
+         else{
+          pDevices = (cl_device_id *)malloc(uiNumDevices * sizeof(cl_device_id));
+          OCL_CHECK(clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, uiNumDevices, pDevices, &uiNumDevices));
+          for (int i = 0; i < (int)uiNumDevices; i++){
+            clGetDeviceInfo(pDevices[i], CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(cl_bool), &unified_memory, NULL);
+             if(unified_memory) //we pick the first GPU we found
+              pDevices[0] = pDevices[i];
+             else {//skip dGPU
+               continue;
+               }
+         }
+       }
+         LOG(INFO) << "picked device type: APU";
+         break;
+    default:
+         LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
     }
-    else{
-        pDevices = (cl_device_id *)malloc(uiNumDevices * sizeof(cl_device_id));
-        clGetDeviceIDs(PlatformIDs[0], CL_DEVICE_TYPE_GPU, uiNumDevices, pDevices, NULL);
-    }
-   
-    //to be improved, yibing
-    pDevices[0] = pDevices[1];
 
     //Create Context
     Context = clCreateContext(NULL, 1, pDevices, NULL, NULL, NULL);
@@ -231,6 +269,7 @@ void Device::GetDeviceInfo(){
     for(cl_uint i = 0; i < numDevices; i++){
     LOG(INFO) << "\t" << "DeviceID" << ":\t" <<DeviceIDs[i];
     DisplayDeviceInfo<cl_device_type>(DeviceIDs[i], CL_DEVICE_TYPE, "Device Type");
+    DisplayDeviceInfo<cl_bool>(DeviceIDs[i], CL_DEVICE_HOST_UNIFIED_MEMORY, "Is it integrated GPU?");
     DisplayDeviceInfo<cl_uint>(DeviceIDs[i], CL_DEVICE_MAX_CLOCK_FREQUENCY, "Max clock frequency MHz");
     DisplayDeviceInfo<cl_bool>(DeviceIDs[i], CL_DEVICE_HOST_UNIFIED_MEMORY, "Host-Device unified mem");
     DisplayDeviceInfo<cl_bool>(DeviceIDs[i], CL_DEVICE_ERROR_CORRECTION_SUPPORT, "ECC support");

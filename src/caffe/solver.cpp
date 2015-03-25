@@ -35,7 +35,7 @@ Solver<Dtype>::Solver(const string& param_file)
 template <typename Dtype>
 void Solver<Dtype>::Init(const SolverParameter& param) {
   param_ = param;
-  //Caffe::set_mode(Caffe::Brew(param_.solver_mode()));
+  Caffe::set_mode(Caffe::Brew(param_.solver_mode()));
   //AMD device related initialization
   amdDevice.Init();
 
