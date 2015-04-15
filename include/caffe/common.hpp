@@ -28,6 +28,9 @@ private:\
 /* ifdef: use CPU random generator in dropout layer
    ifndef: use GPU randome generator*/
 #define use_cpu_generator_dropout
+/*ifdef: use yuan's original scheme;
+*/
+#define use_yuan_scheme 
 /*ifdef: use proposed img_packing scheme;
  ifndef: use proposed packing im2col + sgemm scheme*/
  #define use_packing_scheme
@@ -36,7 +39,7 @@ private:\
 #define opt_num 16
 /*ifdef: use multi-command queues for groups in conv layer;
  ifndef: use single commane queue for groups*/
-#define conv_pipeline
+#define pipeline
 
 // OpenCL: various checks for different function calls.
 #define OCL_CHECK(condition) \

@@ -34,6 +34,13 @@ void caffe_gpu_gemmex( cl_command_queue *queue, const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
     const Dtype alpha, const Dtype* A, const int offA, const Dtype* B, const int offB, const Dtype beta,
     Dtype* C, const int offC);
+/*This is Yuan Gao's sgemm_ex*/
+template <typename Dtype>
+void caffe_gpu_exgemm(const CBLAS_TRANSPOSE TransA,
+    const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
+    const Dtype alpha, const Dtype* A, const Dtype* B, const Dtype beta,
+    Dtype* C, const int offset1, const int offset2, const int offset3);
+
 
 template <typename Dtype>
 cl_event caffe_gpu_gemm_ex(const CBLAS_TRANSPOSE TransA,

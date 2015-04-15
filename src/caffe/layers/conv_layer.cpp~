@@ -149,7 +149,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)tmpMem, 0, ( (col_size) * z * sizeof(Dtype)), col_size * sizeof(Dtype), 0, NULL, NULL) );
     }*/
     im2col_16_gpu(im2col_16_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
-                       width_, kernel_size_, pad_, stride_, (Dtype*)tmpMem, 0);
+                       width_, kernel_size_, pad_, stride_, tmpMem, 0);
 
     cl_int ret;
     ret =clSetKernelArg(ocl_Kernel_transpose,0,sizeof(cl_mem),(void*)&tmpMem);
