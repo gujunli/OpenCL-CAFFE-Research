@@ -69,8 +69,8 @@ class ConvolutionLayer : public Layer<Dtype> {
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom);
-  void ocl_setup(const int bottom_offset, const int top_offset);  
-
+  void ocl_setup(const int bottom_offset, const int top_offset); 
+      //const int bottom0_offset_optnum, const int top0_offset_optnum);
   int kernel_size_;
   int stride_;
   int num_;
@@ -91,8 +91,8 @@ class ConvolutionLayer : public Layer<Dtype> {
 protected:
   cl_kernel im2col_kernel, col2im_kernel;
   cl_kernel oclmem_kernel;
-  cl_mem sub_top, sub_weight, sub_bottom, sub_im2col;
-  cl_mem sub_top_diff, sub_col2im;
+  cl_kernel ocl_Kernel_transpose, ocl_Kernel_transform;
+  cl_mem tmpMem, subTopMem, subTopMem2, transMem, subBotMem, subBotdiff, subTopdiff;
 };
 
 /* EltwiseProductLayer

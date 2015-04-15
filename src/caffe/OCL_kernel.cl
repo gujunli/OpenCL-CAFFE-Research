@@ -1250,3 +1250,28 @@ __kernel void LRNComputeDiff(const int nthreads, __global const T* bottom_data, 
 template __attribute__((mangled_name(LRNComputeDifffloat))) __kernel void LRNComputeDiff(const int nthreads, __global const float* bottom_data, __global const float* top_data, __global const float* scale, __global const float* top_diff, const int num, const int channels, const int height, const int width, const int size, const float negative_beta, const float cache_ratio, __global float* bottom_diff);
 template __attribute__((mangled_name(LRNComputeDiffdouble))) __kernel void LRNComputeDiff(const int nthreads, __global const double* bottom_data, __global const double* top_data, __global const double* scale, __global const double* top_diff, const int num, const int channels, const int height, const int width, const int size, const double negative_beta, const double cache_ratio, __global double* bottom_diff);
 
+template <class T>
+__kernel void transpose(__global const T *src, __global T* dst, int width, int height, int optnum){
+     int gidx = get_global_id(0);
+     int gidy = get_global_id(1);
+     int gidyy = gidy;
+     int index = gidy / height;
+     int offset = index * width * height;
+     gidy = gidy % height;
+     if( gidx < width && gidyy < height * optnum )
+         dst[offset + height * gidx + gidy] = src[offset + width * gidy + gidx];
+}
+template __attribute__((mangled_name(transposefloat))) __kernel void transpose(__global const float* src, __global float* dst, const int width, const int height, int optnum); 
+template __attribute__((mangled_name(transposedouble))) __kernel void transpose(__global const double* src, __global double* dst, const int width, const int heighti, int optnum);
+
+template <class T>
+__kernel void transform(__global const T *src, __global T* dst, int width, int height, int optnum){
+     int gidx = get_global_id(0);
+     int index = gidx % optnum;
+     int offset = gidx / optnum;
+     int i = 0;
+     for(i = 0 ; i < width; i++)
+         dst[(index * height + offset)* width + i] = src[gidx * width + i];
+}
+template __attribute__((mangled_name(transformfloat))) __kernel void transform(__global const float* src, __global float* dst, const int width, const int height, const int optnum); 
+template __attribute__((mangled_name(transformdouble))) __kernel void transform(__global const double* src, __global double* dst, const int width, const int height, const int optnum); 

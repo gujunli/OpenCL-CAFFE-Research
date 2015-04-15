@@ -23,12 +23,22 @@ private:\
 // is executed we will see a fatal log.
 #define NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented Yet"
 
-// OpenCL: various checks for different function calls.
-
+//OpenCL:  various of defines to choose the design schemes
 #define use_sgemm_ex
+/* ifdef: use CPU random generator in dropout layer
+   ifndef: use GPU randome generator*/
 #define use_cpu_generator_dropout
-//#define pipeline
+/*ifdef: use proposed img_packing scheme;
+ ifndef: use proposed packing im2col + sgemm scheme*/
+ #define use_packing_scheme
+/* opt_num defines packing number of the use_packing scheme
+  for intial design, we use the same packing number for all conv layers*/
+#define opt_num 16
+/*ifdef: use multi-command queues for groups in conv layer;
+ ifndef: use single commane queue for groups*/
+#define conv_pipeline
 
+// OpenCL: various checks for different function calls.
 #define OCL_CHECK(condition) \
   do { \
     cl_int error = condition; \
