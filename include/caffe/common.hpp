@@ -24,22 +24,20 @@ private:\
 #define NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented Yet"
 
 //OpenCL:  various of defines to choose the design schemes
-#define use_sgemm_ex
 /* ifdef: use CPU random generator in dropout layer
    ifndef: use GPU randome generator*/
 #define use_cpu_generator_dropout
-/*ifdef: use yuan's original scheme;
-*/
-#define use_yuan_scheme 
+
+//the following are macro defines for optimization schmes in conv layer
 /*ifdef: use proposed img_packing scheme;
  ifndef: use proposed packing im2col + sgemm scheme*/
-// #define use_packing_scheme
-/* opt_num defines packing number of the use_packing scheme
+#define use_packing_scheme
+/* global_packing_N defines packing number of the use_packing scheme
   for intial design, we use the same packing number for all conv layers*/
-#define opt_num 16
+#define global_packing_N 16
 /*ifdef: use multi-command queues for groups in conv layer;
  ifndef: use single commane queue for groups*/
-#define pipeline
+#define multiQ
 
 // OpenCL: various checks for different function calls.
 #define OCL_CHECK(condition) \
