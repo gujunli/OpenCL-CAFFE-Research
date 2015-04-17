@@ -9,6 +9,29 @@
 #include "caffe/util/ocl_util.hpp"
 namespace caffe {
 
+template <typename Dtype>
+void transform_gpu(cl_kernel Kernel, Dtype* src, Dtype* dst, const int top_offset, const int N_, const int M_, const int packing_num){
+    cl_int ret;
+    ret= clSetKernelArg(Kernel,0,sizeof(cl_mem),(void*)&src);
+    OCL_CHECK(ret);
+    ret|=clSetKernelArg(Kernel,1,sizeof(cl_mem),(void*)&dst);
+    OCL_CHECK(ret);
+    ret|=clSetKernelArg(Kernel,2,sizeof(cl_int),(void*)&top_offset);
+    OCL_CHECK(ret);
+    ret|=clSetKernelArg(Kernel,3,sizeof(cl_int),(void*)&N_);
+    OCL_CHECK(ret);
+    ret|=clSetKernelArg(Kernel,4,sizeof(cl_int),(void*)&M_);
+    OCL_CHECK(ret);
+    ret|=clSetKernelArg(Kernel,5,sizeof(cl_int),(void*)&packing_num);
+    OCL_CHECK(ret);
+
+    size_t uiGlobal_Work_Size2[]={M_ * packing_num};
+    size_t uiLocal_Work_Size2[]={256};
+    OCL_CHECK( clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, uiGlobal_Work_Size2, uiLocal_Work_Size2, 0, NULL, NULL) );
+}
+
+template void transform_gpu<float>(cl_kernel Kernel, float* src, float* dst, const int top_offset, const int N_, const int M_, const int packing_num);
+template void transform_gpu<double>(cl_kernel Kernel, double* src, double* dst, const int top_offset, const int N_, const int M_, const int packing_num);
 
 template <typename Dtype>
 void get_max_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* bottom_data, Dtype* scale_data){

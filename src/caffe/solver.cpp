@@ -88,19 +88,20 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     double iter_begin = GettickCount();
     Dtype loss = net_->ForwardBackward(bottom_vec);
     Dtype avg_prob = exp(-loss); 
+    double iter_fp = GettickCount();
 
     double begin_compute_update = GettickCount();
     ComputeUpdateValue();
     printf("Blocking: \t");
     clFinish(amdDevice.CommandQueue);
-    double end_compute_update = GettickCount(); 
-    printf("compute update,\ttime %f ms\n", end_compute_update-begin_compute_update);
 
     net_->Update();
     printf("Blocking: \t");
     clFinish(amdDevice.CommandQueue);
     double end_update = GettickCount();
-    printf("update,        \ttime %f ms\n", end_update-end_compute_update);
+    printf("FP,\ttime %f ms\n", -iter_begin + iter_fp);
+    printf("BP,        \ttime %f ms\n", end_update-begin_compute_update);
+    printf("Per iter,        \ttime %f ms\n", -iter_begin + end_update);
 
 
     if (param_.display() && iter_ % param_.display() == 0) {

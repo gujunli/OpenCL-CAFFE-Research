@@ -7,6 +7,7 @@
 #include "caffe/filler.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/ocl_util.hpp"
+#include "caffe/util/ocl_wrapper.hpp"
 #include <CL/cl.h>
 
 namespace caffe {
@@ -135,69 +136,51 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 #if defined (use_yuan_scheme)
   int weight_offset = M_ * K_;
   int col_offset = K_ * N_;
-  int col_size = (K_ * group_ ) * N_;
+  //int col_size = (K_ * group_ ) * N_;
   int top_offset = M_ * N_;
   int opt_num2 = opt_num;
+  //printf("M_=%d, N_=%d, K_=%d, weight_offset=%d col_offset = %d, top_offset =%d \n", M_, N_, K_, weight_offset, col_offset, top_offset);
   for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
+   //for the last loop, may not be 16. for correctness, col_offset, weight_offset, top_offset will all be different
+    top_offset = M_ * N_ * opt_num2;
+    col_offset = K_ * N_ * opt_num2;  
     // First, im2col
-   /*
-    for (int z = 0; z < opt_num2; z++){
-      im2col_gpu(im2col_kernel, bottom_data, bottom[0]->offset(n+z), channels_, height_, 
-                       width_, kernel_size_, pad_, stride_, col_data, 0);
-    //  printf("M_=%d, N_=%d, K_=%d, col_size=%d \n", M_, N_, K_, col_size);
-      OCL_CHECK( clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)col_data, (cl_mem)tmpMem, 0, ( (col_size) * z * sizeof(Dtype)), col_size * sizeof(Dtype), 0, NULL, NULL) );
-    }*/
+    //this should be opt_num2 images packing together.
     im2col_16_gpu(im2col_16_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
-                       width_, kernel_size_, pad_, stride_, (Dtype*)tmpMem, 0);
-
-    cl_int ret;
-    ret =clSetKernelArg(ocl_Kernel_transpose,0,sizeof(cl_mem),(void*)&tmpMem);
-    ret|=clSetKernelArg(ocl_Kernel_transpose,1,sizeof(cl_mem),(void*)&transMem);
-    ret|=clSetKernelArg(ocl_Kernel_transpose,2,sizeof(cl_int),(void*)&N_);
-    ret|=clSetKernelArg(ocl_Kernel_transpose,3,sizeof(cl_int),(void*)&K_);
-    ret|=clSetKernelArg(ocl_Kernel_transpose,4,sizeof(cl_int),(void*)&opt_num2);
-    cl_event eventPoint;
-    size_t uiGlobal_Work_Size[2];
-    uiGlobal_Work_Size[0]= N_;
-    uiGlobal_Work_Size[1]= (((K_*opt_num2)+255)/256)*256;
-    size_t uiLocal_Work_Size[2];
-    uiLocal_Work_Size[0]=1;
-    uiLocal_Work_Size[1]=256;
-    cl_int iStatus=clEnqueueNDRangeKernel(amdDevice.CommandQueue, ocl_Kernel_transpose, 2, NULL, uiGlobal_Work_Size, uiLocal_Work_Size, 0, NULL, &eventPoint);
-
-
- for (int g = 0; g < group_; ++g) {
-   caffe_gpu_exgemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_ * opt_num2, K_,
-      (Dtype)1., (Dtype*)weight, (Dtype*)transMem,
-     (Dtype)0., (Dtype*)subTopMem, weight_offset * g, (col_offset * opt_num2) *g, (top_offset * opt_num2)*g );
+                       width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0);
+   
+ #ifdef pipeline
+    int g = 0;
+    if(group_ == 1){
+       profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_ * opt_num2, K_,
+          (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
+          (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
+    }else if (group_ == 2){
+       g = 0;
+       caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue), CblasNoTrans, CblasNoTrans, M_, N_ * opt_num2, K_,
+          (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
+          (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
+ 
+       g = 1;
+       caffe_gpu_gemmex<Dtype>(&(amdDevice.CommandQueue_helper), CblasNoTrans, CblasNoTrans, M_, N_ * opt_num2, K_,
+          (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
+          (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
+     }
+#else
+    for (int g = 0; g < group_; ++g) {
+       profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_ * opt_num2, K_,
+          (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
+          (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        }
-    // printf("M_=%d, N_=%d, K_=%d, weight_offset=%d, col_offset = %d, top_offset =%d \n", M_, N_, K_, weight_offset, col_offset, top_offset);
-
-
-    ret= clSetKernelArg(ocl_Kernel_transform,0,sizeof(cl_mem),(void*)&subTopMem);
-    OCL_CHECK(ret);
-    ret|=clSetKernelArg(ocl_Kernel_transform,1,sizeof(cl_mem),(void*)&subTopMem2);
-    OCL_CHECK(ret);
-    ret|=clSetKernelArg(ocl_Kernel_transform,2,sizeof(cl_int),(void*)&N_);
-    OCL_CHECK(ret);
-    ret|=clSetKernelArg(ocl_Kernel_transform,3,sizeof(cl_int),(void*)&M_);
-    OCL_CHECK(ret);
-    ret|=clSetKernelArg(ocl_Kernel_transform,4,sizeof(cl_int),(void*)&opt_num2);
-    OCL_CHECK(ret);
-
-    size_t uiGlobal_Work_Size2[]={M_ * opt_num2};
-    size_t uiLocal_Work_Size2[]={256};
-    iStatus=clEnqueueNDRangeKernel(amdDevice.CommandQueue,ocl_Kernel_transform, 1, NULL,uiGlobal_Work_Size2, uiLocal_Work_Size2,0,NULL,&eventPoint);
-
+#endif
+    transform_gpu(ocl_Kernel_transform, (Dtype*)subTopMem, top_data, (*top)[0]->offset(n), N_, M_, opt_num2);
     for (int z = 0; z < opt_num2; z++)
       if (bias_term_) {
         caffe_gpu_exgemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1,
             (Dtype)1., this->blobs_[1]->gpu_data(), reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()),
-            (Dtype)1., (Dtype*)subTopMem2, 0, 0, M_ * N_ * z);
-      }
-    iStatus = clEnqueueCopyBuffer(amdDevice.CommandQueue, (cl_mem)subTopMem2, (cl_mem)top_data, 0, (M_ * N_ * n * sizeof(Dtype)), M_ * N_ * opt_num2 * sizeof(Dtype), 0, NULL, NULL);
-
+            (Dtype)1., (Dtype*)top_data, 0, 0, (*top)[0]->offset(n) + M_ * N_ * z);
+    }
   }
 
 #elif defined (use_packing_scheme)
@@ -287,7 +270,6 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
                        width_, kernel_size_, pad_, stride_, col_data, 0);
    
    // for (int g = 0; g < group_; ++g) {
-/*
  #ifdef pipeline
     int g = 0;
     if(group_ == 1){
@@ -310,13 +292,12 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     //printf("end: group =1 \n");
      }
  #else
-*/
  for (int g = 0; g < group_; ++g) {
    profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
         (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
         (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
   }
-// #endif
+ #endif
     // third, add bias
     if (bias_term_) {
       profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,

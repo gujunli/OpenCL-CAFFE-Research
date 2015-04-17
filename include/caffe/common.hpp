@@ -33,7 +33,7 @@ private:\
 #define use_yuan_scheme 
 /*ifdef: use proposed img_packing scheme;
  ifndef: use proposed packing im2col + sgemm scheme*/
- #define use_packing_scheme
+// #define use_packing_scheme
 /* opt_num defines packing number of the use_packing scheme
   for intial design, we use the same packing number for all conv layers*/
 #define opt_num 16

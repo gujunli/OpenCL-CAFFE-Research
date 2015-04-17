@@ -793,6 +793,10 @@ __kernel void im2col_16(const int n, __global T* data_im, const int channels, co
     int x_in = x_out * stride - pad;
     int offset_col = channel_out * 16 * height_col * width_col + im_id * height_col * width_col;
     int offset_im = im_id * channels * height * width + channel_in * height * width;
+/*
+    int offset_col = im_id * channels * ksize * ksize * height_col * width_col + ksize * ksize * channels * (y_out * width_col + x_out) + channel_out;
+    int offset_im = im_id * channels * height * width + channel_in * height * width;
+*/
 
     for(int k_h = 0; k_h < ksize; k_h++){
         for(int k_w = 0; k_w < ksize; k_w++){
@@ -800,7 +804,10 @@ __kernel void im2col_16(const int n, __global T* data_im, const int channels, co
             int y_im = y_in + k_h;
             int index_im = y_im * width + x_im;
             int index_col = (k_h * ksize + k_w) * 16 * height_col * width_col + y_out * width_col + x_out;
+/*
+            int index_col = k_h * ksize + k_w;
             
+*/
             if(y_im >= 0 && y_im < height && x_im >= 0 && x_im < width)
                 data_col[offset_col + index_col] = data_im[offset_im + index_im];
             else
@@ -1362,13 +1369,14 @@ template __attribute__((mangled_name(transposefloat))) __kernel void transpose(_
 template __attribute__((mangled_name(transposedouble))) __kernel void transpose(__global const double* src, __global double* dst, const int width, const int heighti, int optnum);
 
 template <class T>
-__kernel void transform(__global const T *src, __global T* dst, int width, int height, int optnum){
+__kernel void transform(__global const T *src, __global T* dst, int top_offset, int width, int height, int optnum){
      int gidx = get_global_id(0);
      int index = gidx % optnum;
+     dst = dst + top_offset; // now we point at (*top)[n]
      int offset = gidx / optnum;
      int i = 0;
      for(i = 0 ; i < width; i++)
          dst[(index * height + offset)* width + i] = src[gidx * width + i];
 }
-template __attribute__((mangled_name(transformfloat))) __kernel void transform(__global const float* src, __global float* dst, const int width, const int height, const int optnum); 
-template __attribute__((mangled_name(transformdouble))) __kernel void transform(__global const double* src, __global double* dst, const int width, const int height, const int optnum); 
+template __attribute__((mangled_name(transformfloat))) __kernel void transform(__global const float* src, __global float* dst, int top_offset, const int width, const int height, const int optnum); 
+template __attribute__((mangled_name(transformdouble))) __kernel void transform(__global const double* src, __global double* dst, int top_offset, const int width, const int height, const int optnum); 
