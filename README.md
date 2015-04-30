@@ -1,4 +1,10 @@
+This is an OpenCL implementation of one of the main stream DNN framework-CAFFE, see more details about CAFFE below.
+The OpenCL CAFFE is developed by AMD Research. The goal is to provide industry an effecient and ready to use OpenCL version of DNN
+framework. OpenCL is an open standard parallel programming language that is supported by more than 20 companies. People can use this framework to run their DNN app on heterogeneous platforms from vairous commercial chip manufacturer.
+Compared to CUDA based DNN, this framework support cross-platform compatability and with design space to optimize accordingly.  
+
 [Caffe: Convolutional Architecture for Fast Feature Extraction](http://caffe.berkeleyvision.org)
+
 
 Created by [Yangqing Jia](http://daggerfs.com), UC Berkeley EECS department.
 In active development by the Berkeley Vision and Learning Center ([BVLC](http://bvlc.eecs.berkeley.edu/)).
@@ -58,6 +64,7 @@ We strive to provide provide lots of usage examples, and to document all code in
 We'd appreciate your contribution to this effort!
 
 ## Development
+The OpenCL CAFFE is developed by AMD Research.
 
 Caffe is developed with active participation of the community by the [Berkeley Vision and Learning Center](http://bvlc.eecs.berkeley.edu/).
 We welcome all contributions!
