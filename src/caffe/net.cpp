@@ -219,9 +219,10 @@ const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilled(Dtype* loss) {
   if (loss != NULL) {
     *loss = Dtype(0.);
   }
+    double begin_fp_time = GettickCount();
   for (int i = 0; i < layers_.size(); ++i) {
-    // LOG(ERROR) << "Forwarding " << layer_names_[i];
     double begin_time = GettickCount();
+    // LOG(ERROR) << "Forwarding " << layer_names_[i];
     Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], &top_vecs_[i]);
     printf("Blocking: \t");
     clFinish(amdDevice.CommandQueue);
@@ -232,6 +233,8 @@ const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilled(Dtype* loss) {
       *loss += layer_loss;
     }
   }
+    double end_fp_time = GettickCount();
+    printf("FP process,\ttime %f ms\n",  end_fp_time-begin_fp_time);
   return net_output_blobs_;
 }
 

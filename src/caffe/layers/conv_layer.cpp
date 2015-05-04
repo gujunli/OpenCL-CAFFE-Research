@@ -141,6 +141,8 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   int top_offset = M_ * N_;
   int weight_offset = M_ * K_;
   int opt_num2 = global_packing_N;
+  cl_command_queue Queue;
+  cl_event prof_event;
   //printf("M_=%d, N_=%d, K_=%d, weight_offset=%d col_offset = %d, top_offset =%d \n", M_, N_, K_, weight_offset, col_offset, top_offset);
   for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
@@ -154,8 +156,6 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
                        width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0, opt_num2);
    
     //step 2: sgemm: Top (subTopMem) = weight * col_data
-    cl_command_queue Queue;
-    cl_event prof_event;
     for (int g = 0; g < group_; ++g) {
       #ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
@@ -172,6 +172,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
        }
 
     //step 3: tranform
+    if (opt_num2 >1)
     transform_gpu(ocl_Kernel_transform, (Dtype*)subTopMem, top_data, (*top)[0]->offset(n), N_, M_, opt_num2);
     //step 4: add bias
     /*note: this sgemm has to use num_output_ instead of M, because M = M /group, in setup*/
@@ -254,6 +255,8 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   int weight_offset = M_ * K_;
   int opt_num2 = global_packing_N;
   int g = 0;
+  cl_command_queue Queue;
+  cl_event prof_event;
   for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
     /*col_offset is the offset for sgemm, including packing and groups
@@ -267,10 +270,9 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 
     //step 2: transform top[n] into shoulder by shoulder, right now i cheated by just copying the data over. without re-organize
     int height_top = M_ * group_, width_top = N_;
+    if (opt_num2 >1)
     opttrans(opttrans_kernel, top_diff, top[0]->offset(n), 1, height_top, width_top, (Dtype*)subTopMem, 0, opt_num2);
     //step 3: sgemm: Top (subTopMem) = weight * col_data
-    cl_command_queue Queue;
-    cl_event prof_event;
     for(g = 0; g < group_; ++g) {
      #ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
@@ -279,8 +281,6 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
         Queue = amdDevice.CommandQueue;
       #endif
       prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
-      //caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasTrans, M_, K_, N_ * opt_num2,
-      //  (Dtype)1., top_diff, top[0]->offset(n),
         (Dtype)1., (Dtype*)subTopMem, top_offset * g,
         (Dtype*)transMem, col_offset * g, (Dtype)1.,
         (Dtype*)weight_diff, weight_offset * g);
@@ -297,7 +297,6 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       #endif
        prof_event =  caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_*opt_num2, M_,
           (Dtype)1., weight,  weight_offset * g,
-          //top_diff, top[0]->offset(n) + top_offset * g,
           (Dtype*)subTopMem, top_offset * g,
           (Dtype)0., (Dtype*)transMem, col_offset * g);
       }
