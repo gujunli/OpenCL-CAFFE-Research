@@ -4,7 +4,7 @@
 #define CAFFE_COMMON_HPP_
 #include <CL/cl_ext.h>
 #include <boost/shared_ptr.hpp>
-#include <clAmdBlas.h>
+#include <clBLAS.h>
 //#include <driver_types.h>  // cuda driver types
 #include <glog/logging.h>
 #include "caffe/device.hpp"
@@ -37,7 +37,7 @@ private:\
 #define global_packing_N 16
 /*ifdef: use multi-command queues for groups in conv layer;
  ifndef: use single commane queue for groups*/
-#define multiQ
+//#define multiQ
 
 // OpenCL: various checks for different function calls.
 #define OCL_CHECK(condition) \
@@ -52,9 +52,9 @@ private:\
 #define AMDBLAS_CHECK(flag) \
   do { \
      cl_int error = flag; \
-     CHECK_EQ(error, clAmdBlasSuccess) << " " << error; \
-     if (error != clAmdBlasSuccess){ \
-         LOG(INFO) << "AmdBlas Function Failed! Error Code:" << error; \
+     CHECK_EQ(error, clblasSuccess) << " " << error; \
+     if (error != clblasSuccess){ \
+         LOG(INFO) << "clBlas Function Failed! Error Code:" << error; \
      } \
  } while(0)
 

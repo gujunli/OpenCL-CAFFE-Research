@@ -156,20 +156,27 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
                        width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0, opt_num2);
    
     //step 2: sgemm: Top (subTopMem) = weight * col_data
+#ifdef multiQ
     for (int g = 0; g < group_; ++g) {
-      #ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
        else Queue =  amdDevice.CommandQueue_helper;
-      #else
-        Queue = amdDevice.CommandQueue;
-      #endif
        prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasNoTrans, M_, N_ * opt_num2, K_,
           (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
-       //printf("transA = No, transB = No, M_=%d, N_=%d, K_=%d\n", N_*opt_num2, M_, K_);
-       //int ID = 0;
-       //clSetEventCallback(prof_event, CL_COMPLETE, &eventCallback, (void*)ID);
        }
+   //sync two command queues
+   if(group_ ==2){
+      clFinish(amdDevice.CommandQueue);
+      clFinish(amdDevice.CommandQueue_helper);
+    }
+#else
+    Queue = amdDevice.CommandQueue;
+    for (int g = 0; g < group_; ++g) {
+       prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasNoTrans, M_, N_ * opt_num2, K_,
+          (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
+          (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
+       }
+#endif
 
     //step 3: tranform
     if (opt_num2 >1)
@@ -273,13 +280,10 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     if (opt_num2 >1)
     opttrans(opttrans_kernel, top_diff, top[0]->offset(n), 1, height_top, width_top, (Dtype*)subTopMem, 0, opt_num2);
     //step 3: sgemm: Top (subTopMem) = weight * col_data
+#ifdef multiQ
     for(g = 0; g < group_; ++g) {
-     #ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
        else Queue =  amdDevice.CommandQueue_helper;
-      #else
-        Queue = amdDevice.CommandQueue;
-      #endif
       prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
         (Dtype)1., (Dtype*)subTopMem, top_offset * g,
         (Dtype*)transMem, col_offset * g, (Dtype)1.,
@@ -289,18 +293,40 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
    //step4:
    if (propagate_down) {
       for (g = 0; g < group_; ++g) {
-     #ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
        else Queue =  amdDevice.CommandQueue_helper;
-      #else
-        Queue = amdDevice.CommandQueue;
-      #endif
        prof_event =  caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_*opt_num2, M_,
           (Dtype)1., weight,  weight_offset * g,
           (Dtype*)subTopMem, top_offset * g,
           (Dtype)0., (Dtype*)transMem, col_offset * g);
       }
     }
+
+  //sync two command queues
+   if(group_ ==2){
+      clFinish(amdDevice.CommandQueue);
+      clFinish(amdDevice.CommandQueue_helper);
+    }
+
+#else
+    Queue = amdDevice.CommandQueue;
+    for(g = 0; g < group_; ++g) {
+      prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
+        (Dtype)1., (Dtype*)subTopMem, top_offset * g,
+        (Dtype*)transMem, col_offset * g, (Dtype)1.,
+        (Dtype*)weight_diff, weight_offset * g);
+    }
+
+   //step4:
+   if (propagate_down) {
+      for (g = 0; g < group_; ++g) {
+       prof_event =  caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_*opt_num2, M_,
+          (Dtype)1., weight,  weight_offset * g,
+          (Dtype*)subTopMem, top_offset * g,
+          (Dtype)0., (Dtype*)transMem, col_offset * g);
+      }
+    }
+#endif
     //step5: col2im
        col2im_gpu_opt(col2im_opt_kernel, (Dtype*)transMem, 0, channels_, height_, width_, kernel_size_, pad_,
                   stride_, bottom_diff, (*bottom)[0]->offset(n), opt_num2);

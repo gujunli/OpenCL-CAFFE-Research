@@ -20,8 +20,8 @@ public:
     cl_command_queue CommandQueue;
     cl_command_queue CommandQueue_helper;
     cl_program Program; 
-    clAmdBlasOrder col;
-    clAmdBlasOrder row;
+    clblasOrder col;
+    clblasOrder row;
 
      
     cl_int Init(); 

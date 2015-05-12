@@ -34,7 +34,7 @@ Caffe::Caffe()
     //srand(37);
 
     cl_int err;
-    err = clAmdBlasSetup();
+    err = clblasSetup();
     if (err != CL_SUCCESS) {
        LOG(ERROR) << "clAmdBlasSetup() failed with " << err;
     }
@@ -45,7 +45,7 @@ Caffe::Caffe()
 }
 
 Caffe::~Caffe() {
-  clAmdBlasTeardown();
+  clblasTeardown();
 }
 
 void Caffe::set_random_seed(const unsigned int seed) {

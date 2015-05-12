@@ -156,8 +156,8 @@ cl_int Device::Init(){
         printf("clAmdBlasSetup() failed with %d\n", err);
     }
     */
-    row = clAmdBlasRowMajor;
-    col = clAmdBlasColumnMajor;
+    row = clblasRowMajor;
+    col = clblasColumnMajor;
    
     return 0;
 }
