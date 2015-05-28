@@ -123,13 +123,35 @@ void ConvolutionLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
-  
+
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   const Dtype* weight = this->blobs_[0]->gpu_data();
   Dtype* col_data = col_buffer_.mutable_gpu_data();
   const Dtype* bottom_data = bottom[0]->gpu_data();
   cl_event profEvent;
-
+ #ifdef check_gradient 
+  const Dtype* bottom_data_check = bottom[0]->cpu_data();
+  printf("bottom data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bottom_data_check[i]);
+  printf("\n");
+  Dtype* top_data_check = (Dtype*)(*top)[0]->cpu_data();
+  printf("top data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", top_data_check[i]);
+  printf("\n");
+  const Dtype* weight_check = this->blobs_[0]->cpu_data();
+  printf("weight data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", weight_check[i]);
+  printf("\n");
+  const Dtype* bias_check = this->blobs_[1]->cpu_data();
+  printf("bias data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bias_check[i]);
+  printf("\n");
+ #endif
+  
   //printf("using packing scheme \n");
   /*int the packing schme, M, K stay the same. N multiplies by opt_num becomes much bigger N'. 
    N' is the M in sgemm call.*/ 
@@ -165,10 +187,10 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        }
    //sync two command queues
-   if(group_ ==2){
+    if(group_ == 2){
       clFinish(amdDevice.CommandQueue);
       clFinish(amdDevice.CommandQueue_helper);
-    }
+     }
 #else
     Queue = amdDevice.CommandQueue;
     for (int g = 0; g < group_; ++g) {
@@ -190,8 +212,33 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
             (Dtype)1., (Dtype*)top_data, 0, 0, (*top)[0]->offset(n) + M_ * N_ * z);
     }
   }
+      clFinish(amdDevice.CommandQueue);
 
-
+#ifdef check_gradient 
+  top_data = (*top)[0]->mutable_gpu_data();
+  weight = this->blobs_[0]->gpu_data();
+  bottom_data = bottom[0]->gpu_data();
+  bottom_data_check =(Dtype*) bottom[0]->cpu_data();
+  printf("bottom data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bottom_data_check[i]);
+  printf("\n");
+  top_data_check = (Dtype*)(*top)[0]->mutable_cpu_data();
+  printf("top data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", top_data_check[i]);
+  printf("\n");
+  weight_check = (Dtype*)this->blobs_[0]->cpu_data();
+  printf("weight data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", weight_check[i]);
+  printf("\n");
+  bias_check = (Dtype*)this->blobs_[1]->cpu_data();
+  printf("bias data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bias_check[i]);
+  printf("\n");
+#endif
 #ifdef Track_layer
   LOG(WARNING) << "conv fp done";
 #endif
@@ -205,6 +252,25 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     Dtype* top_data = (*top)[0]->mutable_cpu_data();
     Dtype* col_data = col_buffer_.mutable_cpu_data();
     const Dtype* weight = this->blobs_[0]->cpu_data();
+ #ifdef check_gradient 
+  printf("bottom data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bottom_data[i]);
+  printf("\n");
+  printf("top data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", top_data[i]);
+  printf("\n");
+  printf("weight data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", weight[i]);
+  printf("\n");
+  const Dtype* bias_check = this->blobs_[1]->cpu_data();
+  printf("bias data before conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bias_check[i]);
+  printf("\n");
+ #endif
     int weight_offset = M_ * K_;
     int col_offset = K_ * N_;
     int top_offset = M_ * N_;
@@ -226,6 +292,25 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                   (Dtype)1., top_data + (*top)[0]->offset(n));
         }
     }
+ #ifdef check_gradient 
+  printf("bottom data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bottom_data[i]);
+  printf("\n");
+  printf("top data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", top_data[i]);
+  printf("\n");
+  printf("weight data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", weight[i]);
+  printf("\n");
+  bias_check = this->blobs_[1]->cpu_data();
+  printf("bias data after conv fp: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", bias_check[i]);
+  printf("\n");
+#endif
     return Dtype(0.);
 }
 
@@ -253,7 +338,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     }
   }
 
-  //printf("using packing scheme \n");
+  // printf("using packing scheme \n");
   // the following are the original values without packing scheme
   int M_org = M_ * group_;
   int K_org = K_ * group_;
