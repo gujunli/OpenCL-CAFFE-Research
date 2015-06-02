@@ -89,14 +89,13 @@ Dtype softmax_gpu(cl_kernel Kernel, const int num, const int dim, const Dtype* p
     OCL_CHECK(clSetKernelArg(Kernel, 2, sizeof(cl_mem),   (void*)&label));
     OCL_CHECK(clSetKernelArg(Kernel, 3, sizeof(cl_int),   (void*)&num));
     OCL_CHECK(clSetKernelArg(Kernel, 4, sizeof(cl_int),   (void*)&dim));
-    OCL_CHECK(clSetKernelArg(Kernel, 5, num * sizeof(Dtype),    NULL));
+    OCL_CHECK(clSetKernelArg(Kernel, 5, 256 * sizeof(Dtype),    NULL));
 
-    size_t globalws[1] = {num};
-    size_t localws[1] = {num};
+    size_t globalws[1] = {256};
+    size_t localws[1] = {256};
     OCL_CHECK (clEnqueueNDRangeKernel(amdDevice.CommandQueue, Kernel, 1, NULL, globalws, localws, 0, NULL, NULL) );
     void* h_loss = clEnqueueMapBuffer(amdDevice.CommandQueue, d_loss, CL_TRUE, CL_MAP_READ, 0, sizeof(Dtype), 0, NULL, NULL, NULL);
     Dtype loss = *(Dtype*)h_loss;
-    printf("loss = %f \n", loss);
     clEnqueueUnmapMemObject(amdDevice.CommandQueue, d_loss, h_loss, 0, NULL, NULL);
     
     return loss;

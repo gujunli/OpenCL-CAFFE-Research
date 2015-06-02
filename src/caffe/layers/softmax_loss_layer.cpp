@@ -60,30 +60,11 @@ Dtype SoftmaxWithLossLayer<Dtype>::Forward_cpu(
   int num = prob_.num();
   int dim = prob_.count() / num;
 
-  #ifdef check_gradient
-  printf("after softmax\n");
-  for(int i=0; i<1000; i++)
-  {
-  printf("%f, ", prob_data[i]);
-  if(i%20==0) printf("\n"); }
-  printf("\n");
-  for(int i=0; i<16; i++)
-  {
-  printf("%d, ", static_cast<int>(label[i]));
-  if(i%20==0) printf("\n"); }
-  printf("\n");
-  #endif
-
   Dtype loss = 0;
-  Dtype temp;
   //the loss is computed by CPU, as GPU does poorly on reduction 
   for (int i = 0; i < num; ++i) {
-    temp = -log(max(prob_data[i * dim + static_cast<int>(label[i])],
+    loss += -log(max(prob_data[i * dim + static_cast<int>(label[i])],
                      Dtype(FLT_MIN)));
-    printf("%d : %f \n", i, temp);
-    loss += temp;
-    //loss += -log(max(prob_data[i * dim + static_cast<int>(label[i])],
-      //               Dtype(FLT_MIN)));
   }
 
 #ifdef Track_layer
@@ -98,48 +79,14 @@ Dtype SoftmaxWithLossLayer<Dtype>::Forward_gpu(
   // The forward pass computes the softmax prob values.
   //return Forward_cpu(bottom, top);
   
-  #ifdef check_gradient
-  const Dtype* bottom_check = bottom[0]->cpu_data();
-  printf("before softmax\n");
-  for(int i=0; i<10; i++)
-  printf("%f, ", bottom_check[i]);
-  printf("\n");
-  #endif
-
   softmax_bottom_vec_[0] = bottom[0];
   softmax_layer_->Forward(softmax_bottom_vec_, &softmax_top_vec_);
   const Dtype* prob_data = prob_.gpu_data();
   const Dtype* label = bottom[1]->gpu_data();
   const int num = prob_.num();
   const int dim = prob_.count() / num;
-  
-  #ifdef check_gradient
-  const Dtype* prob_check = prob_.cpu_data();
-  printf("after softmax\n");
-  for(int i=0; i<1000; i++)
-  {
-  printf("%f, ", prob_check[i]);
-  if(i%20==0) printf("\n"); }
-  printf("\n");
-  const Dtype* label_check = bottom[1]->cpu_data();
-  for(int i=0; i<16; i++)
-  {
-  printf("%d, ", static_cast<int>(label_check[i]));
-  if(i%20==0) printf("\n"); }
-  printf("\n");
-  #endif
 
-  prob_data = prob_.cpu_data();
-  label = bottom[1]->cpu_data();
-  Dtype loss =0, temp;
- for (int i = 0; i < num; ++i) {
-    temp = -log(max(prob_data[i * dim + static_cast<int>(label[i])],
-                     Dtype(FLT_MIN)));
-    printf("%d : %f \n", i, temp);
-    loss += temp;
-  }
-
-//  Dtype loss = softmax_gpu(softmax_kernel, num, dim, prob_data, label, d_loss);
+  Dtype loss = softmax_gpu(softmax_kernel, num, dim, prob_data, label, d_loss);
 
 #ifdef Track_layer
   LOG(WARNING) << "softmax with loss fp done";

@@ -1149,44 +1149,34 @@ template <class T>
 __kernel void softmax(__global T* prob_data, __global T* loss, __global T* label, int num, int dim, __local T* resultScratch){
     
     int gid = get_global_id(0);
-    int wid = get_local_id(0);
-    int wsize = get_local_size(0);
-    int grid = get_group_id(0);
-    int grcount = get_num_groups(0);
+    int size = get_global_size(0);
     
-    int workAmount = (num + grcount - 1) / grcount;
-    int startOffset = workAmount * grid + wid;
-    int maxOffset = workAmount * (grid + 1);
+    resultScratch[gid] = 0.0;
+    for(int i = gid; i < num; i += size){
+    	resultScratch[gid] += -log(prob_data[i * dim + static_cast<int>(label[i])]);
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+    
+    if(gid < 128)
+    	resultScratch[gid] += resultScratch[gid + 128];
+    barrier(CLK_LOCAL_MEM_FENCE);
+    if(gid < 64)
+    	resultScratch[gid] += resultScratch[gid + 64];
+    if(gid < 32)
+    	resultScratch[gid] += resultScratch[gid + 32];
+    if(gid < 16)
+    	resultScratch[gid] += resultScratch[gid + 16];
+    if(gid < 8)
+    	resultScratch[gid] += resultScratch[gid + 8];
+    if(gid < 4)
+    	resultScratch[gid] += resultScratch[gid + 4];
+    if(gid < 2)
+    	resultScratch[gid] += resultScratch[gid + 2];
+    if(gid < 1){
+    	resultScratch[gid] += resultScratch[gid + 1];
+    	loss[0] = resultScratch[gid];
+    }
 
-    if(maxOffset > num){
-    	maxOffset = num;
-    }
-    
-    resultScratch[wid] = 0.0;
-    for(int i = startOffset; i < maxOffset;i += wsize){
-    	resultScratch[wid] += -log(prob_data[i * dim + static_cast<int>(label[i])]);
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-    
-    if(wid < 128)
-    	resultScratch[wid] += resultScratch[wid + 128];
-    barrier(CLK_LOCAL_MEM_FENCE);
-    if(wid < 64)
-    	resultScratch[wid] += resultScratch[wid + 64];
-    if(wid < 32)
-    	resultScratch[wid] += resultScratch[wid + 32];
-    if(wid < 16)
-    	resultScratch[wid] += resultScratch[wid + 16];
-    if(wid < 8)
-    	resultScratch[wid] += resultScratch[wid + 8];
-    if(wid < 4)
-    	resultScratch[wid] += resultScratch[wid + 4];
-    if(wid < 2)
-    	resultScratch[wid] += resultScratch[wid + 2];
-    if(wid == 0){
-    	resultScratch[wid] += resultScratch[wid + 1];
-    	loss[grid] = resultScratch[wid];
-    }
 }
 
 template __attribute__ ((mangled_name(softmax_float))) __kernel void softmax (__global float* prob_data, __global float* loss, __global float* label, int num, int dim, __local float* resultScratch);
