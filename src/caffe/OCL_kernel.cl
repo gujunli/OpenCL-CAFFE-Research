@@ -776,50 +776,6 @@ template __attribute__((mangled_name(im2colfloat))) __kernel void im2col(const i
 template __attribute__((mangled_name(im2coldouble))) __kernel void im2col(const int n, __global double* data_im, const int img_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_col, const int col_offset); 
 
 template <class T>
-__kernel void im2col_16(const int n, __global T* data_im, const int channels, const int img_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_col, const int col_offset){
-
-    int index = get_global_id(0);
-
-    data_im = data_im + img_offset;
-    data_col = data_col + col_offset;
-
-    int x_out = index % width_col;
-    int y_out = (index / width_col) % height_col;
-    int channel_in = (index / width_col / height_col) % channels;
-    int channel_out = channel_in * ksize * ksize;
-    int im_id = index / width_col / height_col / channels;
-
-    int y_in = y_out * stride - pad;
-    int x_in = x_out * stride - pad;
-    int offset_col = channel_out * 16 * height_col * width_col + im_id * height_col * width_col;
-    int offset_im = im_id * channels * height * width + channel_in * height * width;
-/*
-    int offset_col = im_id * channels * ksize * ksize * height_col * width_col + ksize * ksize * channels * (y_out * width_col + x_out) + channel_out;
-    int offset_im = im_id * channels * height * width + channel_in * height * width;
-*/
-
-    for(int k_h = 0; k_h < ksize; k_h++){
-        for(int k_w = 0; k_w < ksize; k_w++){
-            int x_im = x_in + k_w;
-            int y_im = y_in + k_h;
-            int index_im = y_im * width + x_im;
-            int index_col = (k_h * ksize + k_w) * 16 * height_col * width_col + y_out * width_col + x_out;
-/*
-            int index_col = k_h * ksize + k_w;
-            
-*/
-            if(y_im >= 0 && y_im < height && x_im >= 0 && x_im < width)
-                data_col[offset_col + index_col] = data_im[offset_im + index_im];
-            else
-                data_col[offset_col + index_col] = 0;
-        }
-    }
-}
-
-template __attribute__((mangled_name(im2col_16float))) __kernel void im2col_16(const int n, __global float* data_im, const int channels, const int lmg_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global float* data_col, const int col_offset); 
-template __attribute__((mangled_name(im2col_16double))) __kernel void im2col_16(const int n, __global double* data_im, const int channels, const int img_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global double* data_col, const int col_offset); 
-
-template <class T>
 __kernel void im2col_opt(const int n, __global T* data_im, const int channels, const int img_offset, const int height, const int width, const int ksize, const int pad, const int stride, const int height_col, const int width_col, __global T* data_col, const int col_offset, const int optnum){
 
     int index = get_global_id(0);
@@ -835,23 +791,15 @@ __kernel void im2col_opt(const int n, __global T* data_im, const int channels, c
 
     int y_in = y_out * stride - pad;
     int x_in = x_out * stride - pad;
-    int offset_col = channel_out * 16 * height_col * width_col + im_id * height_col * width_col;
+    int offset_col = channel_out * optnum * height_col * width_col + im_id * height_col * width_col;
     int offset_im = im_id * channels * height * width + channel_in * height * width;
-/*
-    int offset_col = im_id * channels * ksize * ksize * height_col * width_col + ksize * ksize * channels * (y_out * width_col + x_out) + channel_out;
-    int offset_im = im_id * channels * height * width + channel_in * height * width;
-*/
 
     for(int k_h = 0; k_h < ksize; k_h++){
         for(int k_w = 0; k_w < ksize; k_w++){
             int x_im = x_in + k_w;
             int y_im = y_in + k_h;
             int index_im = y_im * width + x_im;
-            int index_col = (k_h * ksize + k_w) * 16 * height_col * width_col + y_out * width_col + x_out;
-/*
-            int index_col = k_h * ksize + k_w;
-
-*/
+            int index_col = (k_h * ksize + k_w) * optnum * height_col * width_col + y_out * width_col + x_out;
             if(y_im >= 0 && y_im < height && x_im >= 0 && x_im < width)
                 data_col[offset_col + index_col] = data_im[offset_im + index_im];
             else
@@ -1466,7 +1414,8 @@ template __attribute__((mangled_name(transposedouble))) __kernel void transpose(
 template <class T>
 __kernel void transform(__global const T *src, __global T* dst, int top_offset, int width, int height, int optnum){
      int gidx = get_global_id(0);
-     int index = gidx % optnum;
+     int index;
+     index = (optnum==1) ? 0: gidx % optnum;
      dst = dst + top_offset; // now we point at (*top)[n]
      int offset = gidx / optnum;
      int i = 0;

@@ -273,7 +273,6 @@ Dtype DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                (*top)[1]->mutable_cpu_data());
   }
 
-/*
  #ifdef check_gradient 
   Dtype* prefetch_data_check = (Dtype*)prefetch_data_->cpu_data();
   printf("prefetch data: ");
@@ -291,7 +290,6 @@ Dtype DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   printf("%f, ", label_data_check[i]);
   printf("\n");
 #endif
-*/
   // Start a new prefetch thread
   CreatePrefetchThread();
   return Dtype(0.);
@@ -314,7 +312,6 @@ Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
    }
   clFinish(amdDevice.CommandQueue);
   LOG(WARNING) << "Transfer: a minibatch from CPU to GPU";
- /*
  #ifdef check_gradient 
   Dtype* prefetch_data_check = (Dtype*)prefetch_data_->cpu_data();
   printf("prefetch data: ");
@@ -326,13 +323,12 @@ Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   for(int i =0; i<10; i++)
   printf("%f, ", top_data_check[i]);
   printf("\n");
-  Dtype* label_data_check = (Dtype*)(*top)[1]->mutable_cpu_data();
+  Dtype* label_data_check = (Dtype*)(*top)[1]->cpu_data();
   printf("minibatch label: ");
   for(int i =0; i<10; i++)
   printf("%f, ", label_data_check[i]);
   printf("\n");
 #endif
-*/
 #ifdef Track_data_transfer
 #endif
   // Start a new prefetch thread
