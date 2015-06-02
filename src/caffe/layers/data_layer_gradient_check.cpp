@@ -272,6 +272,24 @@ Dtype DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     caffe_copy(prefetch_label_->count(), prefetch_label_->cpu_data(),
                (*top)[1]->mutable_cpu_data());
   }
+
+ #ifdef check_gradient 
+  Dtype* prefetch_data_check = (Dtype*)prefetch_data_->cpu_data();
+  printf("prefetch data: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", prefetch_data_check[i]);
+  printf("\n");
+  Dtype* top_data_check = (Dtype*)(*top)[0]->cpu_data();
+  printf("minibatch data: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", top_data_check[i]);
+  printf("\n");
+  Dtype* label_data_check = (Dtype*)(*top)[1]->cpu_data();
+  printf("minibatch label: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", label_data_check[i]);
+  printf("\n");
+#endif
   // Start a new prefetch thread
   CreatePrefetchThread();
   return Dtype(0.);
@@ -286,11 +304,31 @@ Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   // Copy the data from prefetch thread to data_layer
    OCL_CHECK( clEnqueueCopyBuffer (amdDevice.CommandQueue, (cl_mem) prefetch_data_->gpu_data(), (cl_mem) (*top)[0]->mutable_gpu_data(), 0, 0, sizeof(Dtype)*prefetch_data_->count(), 0, NULL, NULL) );
    //OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[0]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_data_->count(), prefetch_data_->cpu_data(), 0, NULL, NULL) );
+   printf("write buffer minibatch data \n");
   if (output_labels_) {
    //OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_label_->count(), prefetch_label_->cpu_data(), 0, NULL, NULL) );
+   printf("write buffer minibatch label \n");
    OCL_CHECK( clEnqueueCopyBuffer (amdDevice.CommandQueue, (cl_mem) prefetch_label_->gpu_data(), (cl_mem) (*top)[1]->mutable_gpu_data(), 0, 0, sizeof(Dtype)*prefetch_label_->count(), 0, NULL, NULL) );
    }
   clFinish(amdDevice.CommandQueue);
+  LOG(WARNING) << "Transfer: a minibatch from CPU to GPU";
+ #ifdef check_gradient 
+  Dtype* prefetch_data_check = (Dtype*)prefetch_data_->cpu_data();
+  printf("prefetch data: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", prefetch_data_check[i]);
+  printf("\n");
+  Dtype* top_data_check = (Dtype*)(*top)[0]->cpu_data();
+  printf("minibatch data: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", top_data_check[i]);
+  printf("\n");
+  Dtype* label_data_check = (Dtype*)(*top)[1]->cpu_data();
+  printf("minibatch label: ");
+  for(int i =0; i<10; i++)
+  printf("%f, ", label_data_check[i]);
+  printf("\n");
+#endif
 #ifdef Track_data_transfer
 #endif
   // Start a new prefetch thread

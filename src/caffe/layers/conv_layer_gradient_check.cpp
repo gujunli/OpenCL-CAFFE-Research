@@ -122,6 +122,20 @@ void ConvolutionLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
+
+ #ifdef check_gradient 
+  const Dtype* bottom_data_check = bottom[0]->cpu_data();
+  printf("bottom data before conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", bottom_data_check[i]);
+  printf("\n");
+  Dtype* top_data_check = (Dtype*)(*top)[0]->cpu_data();
+  printf("top data before conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", top_data_check[i]);
+  printf("\n");
+ #endif
+  
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   const Dtype* weight = this->blobs_[0]->gpu_data();
   Dtype* col_data = col_buffer_.mutable_gpu_data();
@@ -151,6 +165,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     //this should be opt_num2 images packing together.
     im2col_opt_gpu(im2col_opt_kernel, bottom_data, bottom[0]->offset(n), channels_, height_, 
                        width_, kernel_size_, pad_, stride_, (Dtype*)transMem, 0, opt_num2);
+    Dtype* col_check = new Dtype[K_org*N_*opt_num2];
      
     //step 2: sgemm: Top (subTopMem) = weight * col_data
 #ifdef multiQ
@@ -191,6 +206,20 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   }
       clFinish(amdDevice.CommandQueue);
 
+#ifdef check_gradient 
+  weight = this->blobs_[0]->gpu_data();
+  bottom_data = bottom[0]->gpu_data();
+  bottom_data_check =(Dtype*) bottom[0]->cpu_data();
+  printf("bottom data after conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", bottom_data_check[i]);
+  printf("\n");
+  top_data_check = (Dtype*)(*top)[0]->mutable_cpu_data();
+  printf("top data after conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", top_data_check[i]);
+  printf("\n");
+#endif
 #ifdef Track_layer
   LOG(WARNING) << "conv fp done";
 #endif
@@ -204,6 +233,16 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     Dtype* top_data = (*top)[0]->mutable_cpu_data();
     Dtype* col_data = col_buffer_.mutable_cpu_data();
     const Dtype* weight = this->blobs_[0]->cpu_data();
+ #ifdef check_gradient 
+  printf("bottom data before conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", bottom_data[i]);
+  printf("\n");
+  printf("top data before conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", top_data[i]);
+  printf("\n");
+ #endif
     int weight_offset = M_ * K_;
     int col_offset = K_ * N_;
     int top_offset = M_ * N_;
@@ -211,12 +250,23 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         // First, im2col
         im2col_cpu(bottom_data + bottom[0]->offset(n), channels_, height_,
                    width_, kernel_size_, pad_, stride_, (Dtype*) col_data);
+    printf("col data: ");
+    for(int i =0; i<5; i++)
+    printf("%f, ", col_data[i]);
+    printf("\n");
+    printf("\n");
         // Second, innerproduct with groups
         for (int g = 0; g < group_; ++g) {
             caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
                                   (Dtype)1., weight + weight_offset * g, col_data + col_offset * g,
                                   (Dtype)0., top_data + (*top)[0]->offset(n) + top_offset * g);
         }
+
+  printf("top data before conv bias: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", top_data[i]);
+  printf("\n");
+  printf("\n");
 
         // third, add bias
         if (bias_term_) {
@@ -226,6 +276,17 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                   (Dtype)1., top_data + (*top)[0]->offset(n));
         }
     }
+ #ifdef check_gradient 
+  printf("bottom data after conv fp: ");
+  for(int i =0; i<5; i++)
+  printf("%f, ", bottom_data[i]);
+  printf("\n");
+  printf("top data after conv fp: ");
+  //int k = (*top)[0]->offset(n);
+  for(int i =0; i<5; i++)
+  printf("%f, ", top_data[i]);
+  printf("\n");
+#endif
     return Dtype(0.);
 }
 

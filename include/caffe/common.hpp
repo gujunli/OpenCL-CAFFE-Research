@@ -34,7 +34,7 @@ private:\
 #define use_packing_scheme
 /* global_packing_N defines packing number of the use_packing scheme
   for intial design, we use the same packing number for all conv layers*/
-#define global_packing_N 16
+#define global_packing_N 8
 /*ifdef: use multi-command queues for groups in conv layer;
  ifndef: use single commane queue for groups*/
 //#define multiQ
