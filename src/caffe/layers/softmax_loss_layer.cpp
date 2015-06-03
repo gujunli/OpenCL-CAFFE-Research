@@ -45,14 +45,6 @@ template <typename Dtype>
 Dtype SoftmaxWithLossLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
   // The forward pass computes the softmax prob values.
-  #ifdef check_gradient
-  const  Dtype* bottom_check = bottom[0]->cpu_data();
-  printf("before softmax\n");
-  for(int i=0; i<10; i++)
-  printf("%f, ", bottom_check[i]);
-  printf("\n");
-  #endif
-
   softmax_bottom_vec_[0] = bottom[0];
   softmax_layer_->Forward(softmax_bottom_vec_, &softmax_top_vec_);
   const Dtype* prob_data = prob_.cpu_data();

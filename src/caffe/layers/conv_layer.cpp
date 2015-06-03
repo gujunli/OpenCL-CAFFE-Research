@@ -31,7 +31,6 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
 
 template <typename Dtype>
  ConvolutionLayer<Dtype>::~ConvolutionLayer(){
- //if(Caffe::mode() == Caffe::GPU){
   OCL_CHECK( clReleaseKernel(im2col_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_kernel) );
   OCL_CHECK( clReleaseKernel(oclmem_kernel) );
@@ -41,7 +40,6 @@ template <typename Dtype>
   OCL_CHECK( clReleaseKernel(ocl_Kernel_col2imfloat) );
   OCL_CHECK( clReleaseKernel(im2col_opt_kernel) );
   OCL_CHECK( clReleaseKernel(col2im_opt_kernel) );
-  //}
 }
 
 
@@ -87,11 +85,7 @@ void ConvolutionLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     }
 
     //initializa OpenCL kernels and cl_mem objects
-   //if(Caffe::mode() == Caffe::GPU)
-     //{
-       ocl_setup(bottom[0]->offset(1), (*top)[0]->offset(1));
-      //LOG(INFO) << "conv ocl_setup: uses GPU already set up";
-     //}
+    ocl_setup(bottom[0]->offset(1), (*top)[0]->offset(1));
 
     // Intialize the weight
     this->blobs_[0].reset(new Blob<Dtype>(
@@ -122,16 +116,80 @@ void ConvolutionLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
+  if (use_packing_scheme && global_packing_N >1)
+   Forward_gpu_opt(bottom, top);
+  else
+   Forward_gpu_org(bottom, top);
+}
+
+template <typename Dtype>
+void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+       const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+   if (use_packing_scheme && global_packing_N >1)
+      Backward_gpu_opt(top, propagate_down, bottom);
+   else
+      Backward_gpu_org(top, propagate_down, bottom);
+}
+
+template <typename Dtype>
+Dtype ConvolutionLayer<Dtype>::Forward_gpu_org(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   const Dtype* weight = this->blobs_[0]->gpu_data();
   Dtype* col_data = col_buffer_.mutable_gpu_data();
   const Dtype* bottom_data = bottom[0]->gpu_data();
+  int weight_offset = M_ * K_;
+  int col_offset = K_ * N_;
+  int top_offset = M_ * N_;
+  cl_command_queue Queue;
   cl_event profEvent;
-  //printf("using packing scheme \n");
-  /*int the packing schme, M, K stay the same. N multiplies by opt_num becomes much bigger N'. 
-   N' is the M in sgemm call.*/ 
+  LOG(INFO) << "conv_fp original caffe scheme";
 
-  /*we still record the original M, N, K for data storage*/
+  for (int n = 0; n < num_; ++n) {
+    // First, im2col
+    im2col_gpu(im2col_kernel, bottom_data, bottom[0]->offset(n), channels_, height_,
+                       width_, kernel_size_, pad_, stride_, col_data, 0);
+  #ifdef multiQ
+  for (int g = 0; g < group_; ++g) {
+       if(g == 0) Queue = amdDevice.CommandQueue;
+       else Queue =  amdDevice.CommandQueue_helper;
+      profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
+        (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
+        (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
+    }
+  #else
+  for (int g = 0; g < group_; ++g) {
+   profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,
+        (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
+        (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
+  }
+  #endif
+    // third, add bias
+    if (bias_term_) {
+      profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
+          N_, 1, (Dtype)1., this->blobs_[1]->gpu_data(), 0,
+          reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), 0,
+          (Dtype)1., top_data, (*top)[0]->offset(n));
+    }
+
+  }
+
+#ifdef Track_layer
+  LOG(WARNING) << "conv fp done";
+#endif
+  return Dtype(0.);
+}
+
+
+template <typename Dtype>
+Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top) {
+  Dtype* top_data = (*top)[0]->mutable_gpu_data();
+  const Dtype* weight = this->blobs_[0]->gpu_data();
+  Dtype* col_data = col_buffer_.mutable_gpu_data();
+  const Dtype* bottom_data = bottom[0]->gpu_data();
+  /*in the packing schme, M, K stay the same. N multiplies by opt_num becomes much bigger N'. 
+   N' is the M in sgemm call.*/ 
   int M_org = M_ * group_;
   int K_org = K_ * group_;
   int col_offset = K_ * N_;
@@ -140,7 +198,8 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   int opt_num2 = global_packing_N;
   cl_command_queue Queue;
   cl_event prof_event;
-  //printf("M_=%d, N_=%d, K_=%d, weight_offset=%d col_offset = %d, top_offset =%d \n", M_, N_, K_, weight_offset, col_offset, top_offset);
+  LOG(INFO) << "conv_fp optimized scheme";
+
   for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
     /*col_offset is the offset for sgemm, including packing and groups
@@ -162,10 +221,10 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        }
    //sync two command queues
-    if(group_ == 2){
-      clFinish(amdDevice.CommandQueue);
-      clFinish(amdDevice.CommandQueue_helper);
-     }
+  //  if(group_ == 2){
+    //  clFinish(amdDevice.CommandQueue);
+     // clFinish(amdDevice.CommandQueue_helper);
+     //}
 #else
     Queue = amdDevice.CommandQueue;
     for (int g = 0; g < group_; ++g) {
@@ -173,10 +232,8 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
           (Dtype)1., weight, weight_offset * g, (Dtype*)transMem, col_offset * g,
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        }
-   clFinish(amdDevice.CommandQueue);
 #endif
 
-    top_data = (*top)[0]->mutable_gpu_data();
     //step 3: tranform
     if (opt_num2 >1)
      transform_gpu(ocl_Kernel_transform, (Dtype*)subTopMem, top_data, (*top)[0]->offset(n), N_, M_, opt_num2);
@@ -189,7 +246,6 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
             (Dtype)1., (Dtype*)top_data, 0, 0, (*top)[0]->offset(n) + M_ * N_ * z);
     }
   }
-      clFinish(amdDevice.CommandQueue);
 
 #ifdef Track_layer
   LOG(WARNING) << "conv fp done";
@@ -230,7 +286,88 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+void ConvolutionLayer<Dtype>::Backward_gpu_org(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+  const Dtype* top_diff = top[0]->gpu_diff();
+  const Dtype* weight = this->blobs_[0]->gpu_data();
+  Dtype* weight_diff = this->blobs_[0]->mutable_gpu_diff();
+  const Dtype* bottom_data = (*bottom)[0]->gpu_data();
+  Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
+  Dtype* col_data = col_buffer_.mutable_gpu_data();
+  Dtype* col_diff = col_buffer_.mutable_gpu_diff();
+  Dtype* bias_diff = NULL;
+  int col_offset = K_ * N_;
+  int top_offset = M_ * N_;
+  int weight_offset = M_ * K_;
+  cl_command_queue Queue;
+  cl_event prof_event;
+  LOG(INFO) << "conv_bp original caffe scheme";
+
+  if (bias_term_) {
+    bias_diff = this->blobs_[1]->mutable_gpu_diff();
+    ocl_memset(oclmem_kernel, bias_diff, (Dtype)(0.), this->blobs_[1]->count());
+    for (int n = 0; n < num_; ++n) {
+      caffe_gpu_gemvv<Dtype>(CblasNoTrans, M_, N_,
+          (Dtype)1., top_diff, top[0]->offset(n), N_,
+          reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), (size_t)0, (Dtype)1., 1,
+          bias_diff, (size_t)0, 1);
+      }
+    }
+
+for (int n = 0; n < num_; ++n) {
+    // since we saved memory in the forward pass by not storing all col data,
+    // we will need to recompute them.
+    im2col_gpu(im2col_kernel, bottom_data, (*bottom)[0]->offset(n), channels_, height_,
+                      width_, kernel_size_, pad_, stride_, col_data, 0);
+   
+    // gradient w.r.t. weight. Note that we will accumulate diffs.
+    for (int g = 0; g < group_; ++g) {
+#ifdef multiQ
+       if(g == 0) Queue = amdDevice.CommandQueue;
+       else Queue =  amdDevice.CommandQueue_helper;
+#else
+       Queue = amdDevice.CommandQueue;
+#endif
+      prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_,
+        (Dtype)1., top_diff, top[0]->offset(n),
+        (Dtype*)col_data, col_offset * g, (Dtype)1.,
+        (Dtype*)weight_diff, weight_offset * g);
+    }
+
+   if (propagate_down) {
+    for (int g = 0; g < group_; ++g) {
+#ifdef multiQ
+       if(g == 0) Queue = amdDevice.CommandQueue;
+       else Queue =  amdDevice.CommandQueue_helper;
+#else
+       Queue = amdDevice.CommandQueue;
+#endif
+        caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_, M_,
+          (Dtype)1., weight,  weight_offset * g,
+          top_diff, top[0]->offset(n) + top_offset * g,
+          (Dtype)0., col_diff, col_offset * g);
+      }
+   }
+#ifdef multiQ
+     if(group_ == 2){
+      clFinish(amdDevice.CommandQueue);
+      clFinish(amdDevice.CommandQueue_helper);
+      }
+#endif
+  // col2im back to the data
+      col2im_gpu(col2im_kernel, col_diff, 0, channels_, height_, width_, kernel_size_, pad_,
+          stride_, bottom_diff, (*bottom)[0]->offset(n));
+    }
+
+#ifdef Track_layer
+    LOG(WARNING) << "conv bp done";
+#endif
+
+ }
+
+
+template <typename Dtype>
+void ConvolutionLayer<Dtype>::Backward_gpu_opt(const vector<Blob<Dtype>*>& top,
       const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
   
   const Dtype* top_diff = top[0]->gpu_diff();
@@ -241,6 +378,16 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   Dtype* col_data = col_buffer_.mutable_gpu_data();
   Dtype* col_diff = col_buffer_.mutable_gpu_diff();
   Dtype* bias_diff = NULL;
+  int M_org = M_ * group_;
+  int K_org = K_ * group_;
+  int col_offset = K_ * N_;
+  int top_offset = M_ * N_;
+  int weight_offset = M_ * K_;
+  int opt_num2 = global_packing_N;
+  int g = 0;
+  cl_command_queue Queue;
+  cl_event prof_event;
+  LOG(INFO) << "conv_bp optimized scheme";
 
   if (bias_term_) {
     bias_diff = this->blobs_[1]->mutable_gpu_diff();
@@ -253,17 +400,6 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     }
   }
 
-  // printf("using packing scheme \n");
-  // the following are the original values without packing scheme
-  int M_org = M_ * group_;
-  int K_org = K_ * group_;
-  int col_offset = K_ * N_;
-  int top_offset = M_ * N_;
-  int weight_offset = M_ * K_;
-  int opt_num2 = global_packing_N;
-  int g = 0;
-  cl_command_queue Queue;
-  cl_event prof_event;
   for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
     /*col_offset is the offset for sgemm, including packing and groups
@@ -277,14 +413,18 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 
     //step 2: transform top[n] into shoulder by shoulder, right now i cheated by just copying the data over. without re-organize
     int height_top = M_ * group_, width_top = N_;
-    if (opt_num2 >1)
+    //if (opt_num2 >1)
     opttrans(opttrans_kernel, top_diff, top[0]->offset(n), 1, height_top, width_top, (Dtype*)subTopMem, 0, opt_num2);
+
     //step 3: sgemm: Top (subTopMem) = weight * col_data
-#ifdef multiQ
     for(g = 0; g < group_; ++g) {
+#ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
        else Queue =  amdDevice.CommandQueue_helper;
-      prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
+#else
+       Queue =  amdDevice.CommandQueue;
+#endif
+       prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
         (Dtype)1., (Dtype*)subTopMem, top_offset * g,
         (Dtype*)transMem, col_offset * g, (Dtype)1.,
         (Dtype*)weight_diff, weight_offset * g);
@@ -293,8 +433,12 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
    //step4:
    if (propagate_down) {
       for (g = 0; g < group_; ++g) {
+#ifdef multiQ
        if(g == 0) Queue = amdDevice.CommandQueue;
        else Queue =  amdDevice.CommandQueue_helper;
+#else
+       Queue =  amdDevice.CommandQueue;
+#endif
        prof_event =  caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_*opt_num2, M_,
           (Dtype)1., weight,  weight_offset * g,
           (Dtype*)subTopMem, top_offset * g,
@@ -302,31 +446,13 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       }
     }
 
-  //sync two command queues
+#ifdef multiQ
    if(group_ ==2){
       clFinish(amdDevice.CommandQueue);
       clFinish(amdDevice.CommandQueue_helper);
     }
-
-#else
-    Queue = amdDevice.CommandQueue;
-    for(g = 0; g < group_; ++g) {
-      prof_event = caffe_gpu_gemmex<Dtype>(&(Queue), CblasNoTrans, CblasTrans, M_, K_, N_ * opt_num2,
-        (Dtype)1., (Dtype*)subTopMem, top_offset * g,
-        (Dtype*)transMem, col_offset * g, (Dtype)1.,
-        (Dtype*)weight_diff, weight_offset * g);
-    }
-
-   //step4:
-   if (propagate_down) {
-      for (g = 0; g < group_; ++g) {
-       prof_event =  caffe_gpu_gemmex<Dtype>(&(Queue), CblasTrans, CblasNoTrans, K_, N_*opt_num2, M_,
-          (Dtype)1., weight,  weight_offset * g,
-          (Dtype*)subTopMem, top_offset * g,
-          (Dtype)0., (Dtype*)transMem, col_offset * g);
-      }
-    }
 #endif
+
     //step5: col2im
        col2im_gpu_opt(col2im_opt_kernel, (Dtype*)transMem, 0, channels_, height_, width_, kernel_size_, pad_,
                   stride_, bottom_diff, (*bottom)[0]->offset(n), opt_num2);

@@ -87,6 +87,17 @@ class ConvolutionLayer : public Layer<Dtype> {
   int K_;
   int N_;
 
+private:
+  Dtype Forward_gpu_org(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  Dtype Forward_gpu_opt(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  void Backward_gpu_org(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  void Backward_gpu_opt(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+
+ 
 //opencl related data structures
 protected:
   cl_kernel im2col_kernel, col2im_kernel;
