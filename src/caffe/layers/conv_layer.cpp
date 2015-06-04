@@ -117,9 +117,9 @@ template <typename Dtype>
 Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
   if (use_packing_scheme && global_packing_N >1)
-   Forward_gpu_opt(bottom, top);
-  else
    Forward_gpu_org(bottom, top);
+  else
+   Forward_gpu_opt(bottom, top);
 }
 
 template <typename Dtype>
@@ -221,10 +221,10 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& botto
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        }
    //sync two command queues
-  //  if(group_ == 2){
-    //  clFinish(amdDevice.CommandQueue);
-     // clFinish(amdDevice.CommandQueue_helper);
-     //}
+     if(group_ == 2){
+       clFinish(amdDevice.CommandQueue);
+       clFinish(amdDevice.CommandQueue_helper);
+     }
 #else
     Queue = amdDevice.CommandQueue;
     for (int g = 0; g < group_; ++g) {
