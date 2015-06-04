@@ -6,7 +6,7 @@ TOOLS=../../build/tools
 #   FLAGS_logtostderr = 0
 #  FLAGS_log_dir = "/home/jlgu/Documents"
 
-GLOG_logtostderr=0 $TOOLS/train_net.bin cifar10_quick_solver.prototxt
+GLOG_logtostderr=1 $TOOLS/train_net.bin cifar10_quick_solver.prototxt
 #$TOOLS/train_net.bin cifar10_quick_solver.prototxt
 
 
