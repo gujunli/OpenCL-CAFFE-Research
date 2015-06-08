@@ -103,7 +103,6 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     printf("BP,        \ttime %f ms\n", end_update-begin_compute_update);
     printf("Per iter,        \ttime %f ms\n", -iter_begin + end_update);
 
-
     if (param_.display() && iter_ % param_.display() == 0) {
       LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss <<",  average prob = "<< avg_prob;
     }

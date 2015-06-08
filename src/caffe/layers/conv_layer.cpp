@@ -117,9 +117,9 @@ template <typename Dtype>
 Dtype ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
   if (use_packing_scheme && global_packing_N >1)
-   Forward_gpu_org(bottom, top);
-  else
    Forward_gpu_opt(bottom, top);
+  else
+   Forward_gpu_org(bottom, top);
 }
 
 template <typename Dtype>
@@ -184,6 +184,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_org(const vector<Blob<Dtype>*>& botto
 template <typename Dtype>
 Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top) {
+
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   const Dtype* weight = this->blobs_[0]->gpu_data();
   Dtype* col_data = col_buffer_.mutable_gpu_data();
@@ -198,7 +199,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& botto
   int opt_num2 = global_packing_N;
   cl_command_queue Queue;
   cl_event prof_event;
-  LOG(INFO) << "conv_fp optimized scheme";
+  //LOG(INFO) << "conv_fp optimized scheme";
 
   for (int n = 0; n < num_; n += opt_num2) {
     opt_num2 = opt_num2 > (num_ - n)? (num_ - n) : opt_num2;
@@ -233,17 +234,19 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& botto
           (Dtype)0., (Dtype*)subTopMem, top_offset * g); 
        }
 #endif
-
+    
     //step 3: tranform
-    if (opt_num2 >1)
-     transform_gpu(ocl_Kernel_transform, (Dtype*)subTopMem, top_data, (*top)[0]->offset(n), N_, M_, opt_num2);
+    //if (opt_num2 >1)
+    transform_gpu(ocl_Kernel_transform, (Dtype*)subTopMem, top_data, (*top)[0]->offset(n), N_, M_org, opt_num2);
     //step 4: add bias
     /*note: this sgemm has to use num_output_ instead of M, because M = M /group, in setup*/
-    for (int z = 0; z < opt_num2; z++)
+    
+   for (int z = 0; z < opt_num2; z++)
       if (bias_term_) {
-        caffe_gpu_exgemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1,
-            (Dtype)1., this->blobs_[1]->gpu_data(), reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()),
-            (Dtype)1., (Dtype*)top_data, 0, 0, (*top)[0]->offset(n) + M_ * N_ * z);
+      caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
+          N_, 1, (Dtype)1., this->blobs_[1]->gpu_data(), 0,
+          reinterpret_cast<const Dtype*>(bias_multiplier_->gpu_data()), 0,
+          (Dtype)1., top_data, (*top)[0]->offset(n) + num_output_ * N_ * z);
     }
   }
 
@@ -283,6 +286,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         }
     }
     return Dtype(0.);
+
 }
 
 template <typename Dtype>
