@@ -91,42 +91,6 @@ cl_event caffe_gpu_gemm_ex<double>(const CBLAS_TRANSPOSE TransA,
     return event;
 }
 
-/*The following are Yuan Gao's sgemm_ex wrapper*/
-template <>
-void caffe_gpu_exgemm<float>(const CBLAS_TRANSPOSE TransA,
-    const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
-    const float alpha, const float* A, const float* B, const float beta,
-    float* C, const int offset1, const int offset2, const int offset3) {
-    clblasTranspose transA = (TransA == CblasNoTrans)? clblasNoTrans : clblasTrans;
-    clblasTranspose transB = (TransB == CblasNoTrans)? clblasNoTrans : clblasTrans;
-
-    int lda = (TransA == CblasNoTrans) ? K : M;
-    int ldb = (TransB == CblasNoTrans) ? N : K;
-    int ldc = N;
-    cl_int err = clblasSgemm(amdDevice.col, transB, transA, N, M, K, (cl_float)alpha, (cl_mem)B, offset2, ldb, (cl_mem)A, offset1, lda, (cl_float)beta, (cl_mem)C, offset3, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        printf("clAmdBlasSgemmEx() failed with %d\n", err);
-    }
-}
-
-template <>
-void caffe_gpu_exgemm<double>(const CBLAS_TRANSPOSE TransA,
-    const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
-    const double alpha, const double* A, const double* B, const double beta,
-    double* C, const int offset1, const int offset2, const int offset3) {
-    clblasTranspose transA = (TransA == CblasNoTrans)? clblasNoTrans : clblasTrans;
-    clblasTranspose transB = (TransB == CblasNoTrans)? clblasNoTrans : clblasTrans;
-
-    int lda = (TransA == CblasNoTrans) ? K : M;
-    int ldb = (TransB == CblasNoTrans) ? N : K;
-    int ldc = N;
-    //printf("trans %d trans %d  ", TransA == CblasNoTrans, TransB == CblasNoTrans);
-    //printf("lda= %d ldb= %d ldc= %d \n", lda, ldb, ldc);
-    cl_int err = clblasDgemm(amdDevice.col, transB, transA, N, M, K, (cl_double)alpha, (cl_mem)B, offset2, ldb, (cl_mem)A, offset1, lda, (cl_double)beta, (cl_mem)C, offset3, ldc, 1, &(amdDevice.CommandQueue), 0, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        printf("clAmdBlasDgemmEx() failed with %d\n", err);
-    }
-}
 
 template <>
 cl_event caffe_gpu_gemmex<float>(cl_command_queue *queue, const CBLAS_TRANSPOSE TransA,

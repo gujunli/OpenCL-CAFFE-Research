@@ -28,6 +28,8 @@ private:\
    ifndef: use GPU randome generator*/
 #define use_cpu_generator_dropout
 
+//#define print_memory_trace
+
 //the following are macro defines for optimization schmes in conv layer
 /*ifdef: use proposed img_packing scheme;
  ifndef: use proposed packing im2col + sgemm scheme*/

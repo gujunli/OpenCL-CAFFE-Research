@@ -5,6 +5,9 @@
 #include <iostream>
 #include <malloc.h>
 namespace caffe {
+//delete it after test, Yibing
+cl_mem test_alloc_mem[10];
+extern long long unsigned device_mem_consumption;
 
 Device amdDevice;
 char* buildOption = "-x clc++ ";
@@ -158,7 +161,47 @@ cl_int Device::Init(){
     */
     row = clblasRowMajor;
     col = clblasColumnMajor;
-   
+	
+	/* 
+	//delete after test the large buffer allocation, Yibing	
+	long long global_mem_size_limit = 1024*1024; //4*1024*1024*1024;
+	global_mem_size_limit *= (long long)(0.0*1024.0);
+	//global_mem_size_limit = 16834887680/2;
+	long long available_global_mem_size = 1024*1024;
+        available_global_mem_size *= 20*1024; 
+	
+	long long global_mem_malloc_size_limit = 1024*1024;
+	while(available_global_mem_size > global_mem_size_limit){
+		long long size_;
+		if((available_global_mem_size - global_mem_size_limit) >= global_mem_malloc_size_limit){
+			size_ = global_mem_malloc_size_limit;
+		}else{
+			size_ = available_global_mem_size - global_mem_size_limit;
+		}
+		available_global_mem_size = available_global_mem_size - size_;
+		int *tmpData = (int *)malloc(size_);
+		cl_int err;
+                int i = 0;
+		test_alloc_mem[i] = clCreateBuffer(Context, CL_MEM_READ_WRITE, size_, NULL, &err);
+        	err = clEnqueueWriteBuffer(CommandQueue, test_alloc_mem[i], CL_TRUE, 0, size_, tmpData, 0, NULL, NULL);
+		i++;
+                device_mem_consumption += size_;
+                //printf("self alloc, device_mem_consumption = %lu\n", device_mem_consumption);
+		if(err != CL_SUCCESS) {
+                	printf("Large Buffer Allocation  failed! error_code = %d\n", err);
+                	printf("self alloc, device_mem_consumption = %llu\n", device_mem_consumption);
+                	exit(1);
+        	}
+                
+		cl_ulong free_mem_size, mem_size;
+                cl_int err1 = clGetDeviceInfo(pDevices[0],CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,sizeof(cl_ulong),&free_mem_size,NULL);
+                cl_int err2 = clGetDeviceInfo(pDevices[0],CL_DEVICE_GLOBAL_MEM_SIZE,sizeof(cl_ulong),&mem_size,NULL);
+                //std::cout<<"free memory size after allocation = "<<free_mem_size<<",err_code ="<<err1<<std::endl;
+                //std::cout<<"global memory size = "<<mem_size<<",err_code ="<<err2<<std::endl;
+        	
+		free(tmpData);
+	}*/
+
     return 0;
 }
 

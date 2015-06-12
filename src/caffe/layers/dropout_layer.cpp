@@ -14,7 +14,7 @@
 
 
 namespace caffe {
-
+extern long long unsigned device_mem_consumption;
 template <typename Dtype>
 void DropoutLayer<Dtype>::ocl_setup(int bottom_count){
     //create OpenCL related cl_mem objects and kernels
@@ -25,8 +25,11 @@ void DropoutLayer<Dtype>::ocl_setup(int bottom_count){
     rng_kernel = clCreateKernel(amdDevice.Program,"RNGBernoulliFloat",&_err);
     OCL_CHECK(_err);
     MaskMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, bottom_count*sizeof(int), NULL, NULL);
+#ifdef  print_memory_trace 
+    device_mem_consumption += bottom_count*sizeof(int);
+    printf("device_mem_consumption = %llu, total device_mem_consumption = %llu\n", bottom_count, device_mem_consumption);
    //} 
-
+#endif
 }
 template <typename Dtype>
 DropoutLayer<Dtype>::~DropoutLayer(){

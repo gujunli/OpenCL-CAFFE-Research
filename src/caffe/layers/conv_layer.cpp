@@ -11,6 +11,8 @@
 #include <CL/cl.h>
 
 namespace caffe {
+extern long long device_mem_consumption;
+
 template <typename Dtype>
 void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
      const int top0_offset1) {
@@ -26,6 +28,9 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
   ocl_Kernel_transform = clCreateKernel(amdDevice.Program,"transformfloat",NULL);
   subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
   transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
+
+//  device_mem_consumption += (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype))+(size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
+ // printf("device_mem_consumption = %lu\n", device_mem_consumption);
 }
 
 
@@ -236,7 +241,6 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& botto
 #endif
     
     //step 3: tranform
-    //if (opt_num2 >1)
     transform_gpu(ocl_Kernel_transform, (Dtype*)subTopMem, top_data, (*top)[0]->offset(n), N_, M_org, opt_num2);
     //step 4: add bias
     /*note: this sgemm has to use num_output_ instead of M, because M = M /group, in setup*/
@@ -249,6 +253,23 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_opt(const vector<Blob<Dtype>*>& botto
           (Dtype)1., top_data, (*top)[0]->offset(n) + num_output_ * N_ * z);
     }
   }
+
+#ifdef check_gradient
+   const Dtype *cpu_bottom_data = bottom[0]->cpu_data(); 
+   Dtype *cpu_top_data = (Dtype*)(*top)[0]->cpu_data();
+
+   printf("\n\nbottom data GPU:\n");
+   for(int i=0; i<channels_*height_*width_; i+=1000){    
+       printf("%f,",cpu_bottom_data[i]);
+       if(i%16==15) printf("\n");
+   }   
+  printf("\n\ntop data GPU:\n");
+   for(int i=0; i<M_org*N_*num_; i+=100000){
+       printf("%f,",cpu_top_data[i]);
+      if(i%16==15) printf("\n");
+   }
+  printf("\n\n");
+#endif
 
 #ifdef Track_layer
   LOG(WARNING) << "conv fp done";
@@ -285,6 +306,23 @@ Dtype ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                   (Dtype)1., top_data + (*top)[0]->offset(n));
         }
     }
+   
+#ifdef check_gradient
+   const Dtype *cpu_bottom_data = bottom[0]->cpu_data();
+   const Dtype *cpu_top_data =  (*top)[0]->cpu_data();
+
+   printf("\n\nbottom data CPU:\n");
+   for(int i=0; i<channels_*height_*width_; i+=1000){
+       printf("%f,",cpu_bottom_data[i]);
+       if(i%16==15) printf("\n");
+   }
+  printf("\n\ntop data CPU:\n");
+   for(int i=0; i<M_*N_*num_; i+=100000){
+       printf("%f,",cpu_top_data[i]);
+      if(i%16==15) printf("\n");
+   }
+  printf("\n\n");
+#endif
     return Dtype(0.);
 
 }
