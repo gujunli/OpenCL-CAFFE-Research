@@ -28,8 +28,7 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
   ocl_Kernel_transform = clCreateKernel(amdDevice.Program,"transformfloat",NULL);
   subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
   transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
-
-//  device_mem_consumption += (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype))+(size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
+ //device_mem_consumption += (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype))+(size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
  // printf("device_mem_consumption = %lu\n", device_mem_consumption);
 }
 
@@ -343,7 +342,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu_org(const vector<Blob<Dtype>*>& top,
   int weight_offset = M_ * K_;
   cl_command_queue Queue;
   cl_event prof_event;
-  LOG(INFO) << "conv_bp original caffe scheme";
+  //LOG(INFO) << "conv_bp original caffe scheme";
 
   if (bias_term_) {
     bias_diff = this->blobs_[1]->mutable_gpu_diff();
@@ -429,7 +428,7 @@ void ConvolutionLayer<Dtype>::Backward_gpu_opt(const vector<Blob<Dtype>*>& top,
   int g = 0;
   cl_command_queue Queue;
   cl_event prof_event;
-  LOG(INFO) << "conv_bp optimized scheme";
+  //LOG(INFO) << "conv_bp optimized scheme";
 
   if (bias_term_) {
     bias_diff = this->blobs_[1]->mutable_gpu_diff();

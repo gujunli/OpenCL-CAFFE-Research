@@ -403,7 +403,7 @@ void caffe_rng_uniform(const int n, const Dtype a, const Dtype b, Dtype* r) {
     r[i] = variate_generator();
   }
 
-  LOG(INFO) << "caffe_rng_uniform";
+  //LOG(INFO) << "caffe_rng_uniform";
 }
 
 template
@@ -427,7 +427,7 @@ void caffe_rng_gaussian(const int n, const Dtype a,
   for (int i = 0; i < n; ++i) {
     r[i] = variate_generator();
   }
-  LOG(INFO) << "caffe_rng_guassian";
+  //LOG(INFO) << "caffe_rng_guassian";
 }
 
 template
@@ -450,7 +450,7 @@ void caffe_rng_bernoulli(const int n, const Dtype p, int* r) {
   for (int i = 0; i < n; ++i) {
     r[i] = variate_generator();
   }
-  LOG(INFO) << "caffe_rng_bernoulli";
+  //LOG(INFO) << "caffe_rng_bernoulli";
 }
 
 template

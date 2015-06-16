@@ -10,8 +10,6 @@
 
 namespace caffe {
 
-long long unsigned device_mem_consumption = 0;
-
 SyncedMemory::~SyncedMemory() {
   if (cpu_ptr_ && own_cpu_data_) {
     OCL_CHECK( clEnqueueUnmapMemObject(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, cpu_ptr_, 0, NULL, NULL) );
@@ -39,17 +37,12 @@ inline void SyncedMemory::to_cpu() {
   case UNINITIALIZED:
     //allocate pre-pinned memory
     //pinned_buffer_ptr_
-    if(data_layer_){
-      gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_USE_PERSISTENT_MEM_AMD, size_, NULL, NULL);
-    //
-#ifdef  print_memory_trace
-      device_mem_consumption += size_;
-      printf("device_mem_consumption = %lu, total device_mem_consumption = %lu\n", size_/4, device_mem_consumption);
-#endif
-    }
-    else{
+//    if(data_layer_){
+  //    gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_USE_PERSISTENT_MEM_AMD, size_, NULL, NULL);
+   // }
+   // else{
       gpu_cache_ptr_ = clCreateBuffer(amdDevice.Context, CL_MEM_ALLOC_HOST_PTR, size_, NULL, NULL);
-    }
+    //}
     cpu_ptr_ = clEnqueueMapBuffer(amdDevice.CommandQueue, (cl_mem)gpu_cache_ptr_, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0, size_, 0, NULL, NULL, NULL);
     memset(cpu_ptr_, 0, size_);
     head_ = HEAD_AT_CPU;
@@ -80,12 +73,7 @@ inline void SyncedMemory::to_gpu() {
   case UNINITIALIZED:{
     //To Do: implement OCL_CHECK_NULL
     cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
-   // 
-#ifdef  print_memory_trace
-    device_mem_consumption += size_;
-    printf("device_mem_consumption = %lu, total device_mem_consumption = %lu\n", size_/4, device_mem_consumption);
-#endif 
-   if(NULL == tmpMem){
+    if(NULL == tmpMem){
       fprintf(stderr,"Failed to create memory object 58\n");
       break;
     }
@@ -98,11 +86,6 @@ inline void SyncedMemory::to_gpu() {
   case HEAD_AT_CPU:{
     if (gpu_ptr_ == NULL) {
       cl_mem tmpMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, size_, NULL, NULL);
-     //
-#ifdef  print_memory_trace
-      device_mem_consumption += size_;
-      printf("device_mem_consumption = %lu, total device_mem_consumption = %lu\n", size_/4, device_mem_consumption);
-#endif
       if(NULL == tmpMem){
         fprintf(stderr,"Failed to create memory object\n");
       }

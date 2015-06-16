@@ -287,28 +287,10 @@ Dtype DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
    //OCL_CHECK( clEnqueueCopyBuffer (amdDevice.CommandQueue, (cl_mem) prefetch_data_->gpu_data(), (cl_mem) (*top)[0]->mutable_gpu_data(), 0, 0, sizeof(Dtype)*prefetch_data_->count(), 0, NULL, NULL) );
    OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[0]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_data_->count(), prefetch_data_->cpu_data(), 0, NULL, NULL) );
   if (output_labels_) {
-   //OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_label_->count(), prefetch_label_->cpu_data(), 0, NULL, NULL) );
-   OCL_CHECK( clEnqueueCopyBuffer (amdDevice.CommandQueue, (cl_mem) prefetch_label_->gpu_data(), (cl_mem) (*top)[1]->mutable_gpu_data(), 0, 0, sizeof(Dtype)*prefetch_label_->count(), 0, NULL, NULL) );
+   OCL_CHECK( clEnqueueWriteBuffer (amdDevice.CommandQueue, (cl_mem)(*top)[1]->mutable_gpu_data(), CL_TRUE, 0, sizeof(Dtype)*prefetch_label_->count(), prefetch_label_->cpu_data(), 0, NULL, NULL) );
+   //OCL_CHECK( clEnqueueCopyBuffer (amdDevice.CommandQueue, (cl_mem) prefetch_label_->gpu_data(), (cl_mem) (*top)[1]->mutable_gpu_data(), 0, 0, sizeof(Dtype)*prefetch_label_->count(), 0, NULL, NULL) );
    }
   clFinish(amdDevice.CommandQueue);
-
-#ifdef check_gradient
-   const Dtype *cpu_bottom_data = prefetch_data_->cpu_data();
-   const Dtype *cpu_top_data =  prefetch_label_->cpu_data();
-
-   printf("\n\ndatalayer minibatch data GPU:\n");
-   for(int i=0; i<prefetch_data_->count(); i+=100000){
-       printf("%f,",cpu_bottom_data[i]);
-       if(i%16==15) printf("\n");
-   }
-  printf("\n\ndatalayer label data GPU:\n");
-   for(int i=0; i<prefetch_label_->count(); i+=100000){
-       printf("%f,",cpu_top_data[i]);
-      if(i%16==15) printf("\n");
-   }
-  printf("\n\n");
-#endif
-
 #ifdef Track_data_transfer
 #endif
   // Start a new prefetch thread

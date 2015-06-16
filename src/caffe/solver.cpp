@@ -78,7 +78,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // the effect of the first training iterations.
  
   if (param_.test_interval()) {
-      //Test();
+      Test();
   }
 
   // For a network that is trained by the solver, no bottom or top vecs

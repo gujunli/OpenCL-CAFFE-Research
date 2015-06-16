@@ -39,8 +39,8 @@ private:\
 #define global_packing_N 16
 /*ifdef: use multi-command queues for groups in conv layer;
  ifndef: use single commane queue for groups*/
-#define multiQ
-#define check_gradient
+//#define multiQ
+//#define check_gradient
 
 // OpenCL: various checks for different function calls.
 #define OCL_CHECK(condition) \
