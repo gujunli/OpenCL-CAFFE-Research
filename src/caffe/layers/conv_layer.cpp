@@ -161,6 +161,11 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_org(const vector<Blob<Dtype>*>& botto
         (Dtype)1., weight, weight_offset * g, col_data, col_offset * g,
         (Dtype)0., top_data, (*top)[0]->offset(n) + top_offset * g);
     }
+   //sync two command queues
+     if(group_ == 2){
+       clFinish(amdDevice.CommandQueue);
+       clFinish(amdDevice.CommandQueue_helper);
+     }
   #else
   for (int g = 0; g < group_; ++g) {
    profEvent = caffe_gpu_gemm_ex<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, K_,

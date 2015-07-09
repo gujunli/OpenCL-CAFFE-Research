@@ -134,10 +134,8 @@ void Solver<Dtype>::Test() {
   Dtype loss = 0;
   for (int i = 0; i < param_.test_iter(); ++i) {
     Dtype iter_loss;
-  std::cout << "Test whether test() new parameters and blobs-3.2" << std::endl;  
     const vector<Blob<Dtype>*>& result =
         test_net_->Forward(bottom_vec, &iter_loss);
-  std::cout << "Test whether test() new parameters and blobs-3.3" << std::endl;  
     if (param_.test_compute_loss()) {
       loss += iter_loss;
     }

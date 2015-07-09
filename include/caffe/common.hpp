@@ -26,7 +26,7 @@ private:\
 //OpenCL:  various of defines to choose the design schemes
 /* ifdef: use CPU random generator in dropout layer
    ifndef: use GPU randome generator*/
-#define use_cpu_generator_dropout
+//#define use_cpu_generator_dropout
 
 //#define print_memory_trace
 
