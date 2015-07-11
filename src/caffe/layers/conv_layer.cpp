@@ -13,10 +13,12 @@
 namespace caffe {
 extern long long device_mem_consumption;
 
+#ifdef use_packing_scheme
 template <typename Dtype> size_t ConvolutionLayer<Dtype>::subtop_mem_size = sizeof(Dtype);
 template <typename Dtype> size_t ConvolutionLayer<Dtype>::trans_mem_size =  sizeof(Dtype);
 template <typename Dtype> cl_mem ConvolutionLayer<Dtype>::subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, ConvolutionLayer<Dtype>::subtop_mem_size, NULL, NULL);
 template <typename Dtype> cl_mem ConvolutionLayer<Dtype>::transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, ConvolutionLayer<Dtype>::trans_mem_size, NULL, NULL);
+#endif
 
 template <typename Dtype>
 void Alloc_public_tmp_mem(size_t subtop_size, size_t trans_size)
@@ -47,14 +49,11 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
   ocl_Kernel_transpose = clCreateKernel(amdDevice.Program,"transposefloat",NULL);
   ocl_Kernel_transform = clCreateKernel(amdDevice.Program,"transformfloat",NULL);
 
+#ifdef use_packing_scheme
   size_t subtop_size = (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
   size_t trans_size = (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype));
-  
   Alloc_public_tmp_mem<Dtype>(subtop_size, trans_size);
-//  subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
- // transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
- //device_mem_consumption += (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype))+(size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
- // printf("device_mem_consumption = %lu\n", device_mem_consumption);
+#endif
 }
 
 
