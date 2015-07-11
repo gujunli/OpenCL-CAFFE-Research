@@ -13,6 +13,26 @@
 namespace caffe {
 extern long long device_mem_consumption;
 
+template <typename Dtype> size_t ConvolutionLayer<Dtype>::subtop_mem_size = sizeof(Dtype);
+template <typename Dtype> size_t ConvolutionLayer<Dtype>::trans_mem_size =  sizeof(Dtype);
+template <typename Dtype> cl_mem ConvolutionLayer<Dtype>::subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, ConvolutionLayer<Dtype>::subtop_mem_size, NULL, NULL);
+template <typename Dtype> cl_mem ConvolutionLayer<Dtype>::transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, ConvolutionLayer<Dtype>::trans_mem_size, NULL, NULL);
+
+template <typename Dtype>
+void Alloc_public_tmp_mem(size_t subtop_size, size_t trans_size)
+{
+  if(subtop_size > ConvolutionLayer<Dtype>::subtop_mem_size){
+      ConvolutionLayer<Dtype>::subtop_mem_size = subtop_size;
+      clReleaseMemObject(ConvolutionLayer<Dtype>::subTopMem);
+      ConvolutionLayer<Dtype>::subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, ConvolutionLayer<Dtype>::subtop_mem_size, NULL, NULL);
+  }
+  if(trans_size > ConvolutionLayer<Dtype>::trans_mem_size){
+      ConvolutionLayer<Dtype>::trans_mem_size =  trans_size;
+      clReleaseMemObject(ConvolutionLayer<Dtype>::transMem);
+      ConvolutionLayer<Dtype>::transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, ConvolutionLayer<Dtype>::trans_mem_size, NULL, NULL);
+  }
+}
+
 template <typename Dtype>
 void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
      const int top0_offset1) {
@@ -26,8 +46,13 @@ void ConvolutionLayer<Dtype>::ocl_setup(const int bottom0_offset1,
   ocl_Kernel_col2imfloat = clCreateKernel(amdDevice.Program,"col2imfloat_yuan",NULL);
   ocl_Kernel_transpose = clCreateKernel(amdDevice.Program,"transposefloat",NULL);
   ocl_Kernel_transform = clCreateKernel(amdDevice.Program,"transformfloat",NULL);
-  subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
-  transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
+
+  size_t subtop_size = (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
+  size_t trans_size = (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype));
+  
+  Alloc_public_tmp_mem<Dtype>(subtop_size, trans_size);
+//  subTopMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
+ // transMem = clCreateBuffer(amdDevice.Context, CL_MEM_READ_WRITE, (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype)), NULL, NULL);
  //device_mem_consumption += (size_t)((K_ * group_ )* N_ * global_packing_N * sizeof(Dtype))+(size_t)((M_ * group_) * N_ * global_packing_N * sizeof(Dtype));
  // printf("device_mem_consumption = %lu\n", device_mem_consumption);
 }

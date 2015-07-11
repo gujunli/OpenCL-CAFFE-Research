@@ -105,7 +105,9 @@ protected:
   cl_kernel ocl_Kernel_im2colfloat, ocl_Kernel_col2imfloat;
   cl_kernel ocl_Kernel_transpose, ocl_Kernel_transform;
   cl_kernel im2col_opt_kernel, col2im_opt_kernel, opttrans_kernel;
-  cl_mem subTopMem, transMem;
+public:
+  static cl_mem subTopMem, transMem;
+  static size_t subtop_mem_size, trans_mem_size;
 };
 
 /* EltwiseProductLayer
