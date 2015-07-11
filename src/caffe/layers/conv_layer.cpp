@@ -171,7 +171,7 @@ Dtype ConvolutionLayer<Dtype>::Forward_gpu_org(const vector<Blob<Dtype>*>& botto
   int top_offset = M_ * N_;
   cl_command_queue Queue;
   cl_event profEvent;
-  LOG(INFO) << "conv_fp original caffe scheme";
+  //LOG(INFO) << "conv_fp original caffe scheme";
 
   for (int n = 0; n < num_; ++n) {
     // First, im2col
